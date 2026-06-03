@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2d6a4f">
+<title>샘터 조직 관리 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── 로그인 ─────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-top">
+      <div class="login-emblem">🌿</div>
+      <h1 class="login-title">샘터</h1>
+      <p class="login-sub">2026년 조직 관리 시스템</p>
+    </div>
+    <div class="login-body">
+      <label class="field-label">비밀번호</label>
+      <input type="password" id="pw" placeholder="비밀번호를 입력하세요"
+             onkeydown="if(event.key==='Enter')login()">
+      <button class="btn-login" onclick="login()">로그인</button>
+      <p class="login-err" id="login-err"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ── 앱 본체 ─────────────────────────────────── -->
+<div id="app" class="hidden">
+
+  <header class="hdr">
+    <div class="hdr-inner">
+      <div class="hdr-brand">🌿 <span>샘터 조직 관리</span></div>
+      <div class="hdr-right">
+        <button class="hdr-btn" onclick="doExport()" title="엑셀 내보내기">⬇ 내보내기</button>
+        <button class="hdr-btn hdr-logout" onclick="logout()">로그아웃</button>
+      </div>
+    </div>
+    <!-- PC 탭 -->
+    <nav class="pc-tabs">
+      <button class="tab active" data-tab="org"      onclick="switchTab('org')">📋 조직표</button>
+      <button class="tab"        data-tab="room"     onclick="switchTab('room')">🏠 방배정</button>
+      <button class="tab"        data-tab="inactive" onclick="switchTab('inactive')">📌 비활동</button>
+      <button class="tab"        data-tab="log"      onclick="switchTab('log')">📜 변경이력</button>
+    </nav>
+  </header>
+
+  <main class="main">
+
+    <!-- 조직표 탭 -->
+    <section id="tab-org" class="section active">
+      <div class="toolbar">
+        <select id="d-filter" onchange="renderOrg()">
+          <option value="">전체 지구</option>
+          <option value="1">1지구</option>
+          <option value="2">2지구</option>
+          <option value="3">3지구</option>
+          <option value="4">4지구</option>
+        </select>
+        <input id="search" type="search" placeholder="이름 검색…" oninput="renderOrg()">
+      </div>
+      <div id="org-grid"></div>
+    </section>
+
+    <!-- 방배정 탭 -->
+    <section id="tab-room" class="section hidden">
+      <div class="sec-hdr">
+        <h2>방배정</h2>
+        <button class="btn-sm" onclick="loadRooms()">새로고침</button>
+      </div>
+      <div id="room-body"></div>
+    </section>
+
+    <!-- 비활동 탭 -->
+    <section id="tab-inactive" class="section hidden">
+      <div class="sec-hdr">
+        <h2>비활동 교인</h2>
+        <button class="btn-primary btn-sm" onclick="openAddInactive()">+ 추가</button>
+      </div>
+      <div id="inactive-body"></div>
+    </section>
+
+    <!-- 이력 탭 -->
+    <section id="tab-log" class="section hidden">
+      <div class="sec-hdr">
+        <h2>변경 이력</h2>
+        <button class="btn-sm" onclick="loadLogs()">새로고침</button>
+      </div>
+      <div id="log-body"></div>
+    </section>
+
+  </main>
+
+  <!-- 모바일 하단 탭 -->
+  <nav class="mob-nav">
+    <button class="m-tab active" data-tab="org"      onclick="switchTab('org')">📋<span>조직표</span></button>
+    <button class="m-tab"        data-tab="room"     onclick="switchTab('room')">🏠<span>방배정</span></button>
+    <button class="m-tab"        data-tab="inactive" onclick="switchTab('inactive')">📌<span>비활동</span></button>
+    <button class="m-tab"        data-tab="log"      onclick="switchTab('log')">📜<span>이력</span></button>
+  </nav>
+</div>
+
+<!-- ── 모달 ──────────────────────────────────── -->
+<div id="modal" class="modal-bg hidden" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <button class="modal-x" onclick="closeModal()">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ── 토스트 ─────────────────────────────────── -->
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
