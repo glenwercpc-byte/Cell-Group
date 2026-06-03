@@ -4,7 +4,7 @@
 // ================================================================
 
 // ★ 아래 URL을 Apps Script 배포 후 발급받은 URL로 교체하세요
-const API_URL = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz0SEKnT5y1FAiOQP15fx3uiEN0fEJps81_tpL331AfkcTrpsN3PcmoY5kaqTMpl2Y5/exec';
 
 // ── 전역 상태 ────────────────────────────────────────────────────
 let STATE = {
