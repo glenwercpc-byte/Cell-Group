@@ -391,8 +391,8 @@ function render() {
         <input value="${dist.name}"
           style="background:transparent;border:none;color:#fff;font-weight:700;
                  font-size:.8rem;padding:0;font-family:inherit;width:50px;text-align:center"
-          oninput="dist.name=this.value;render()">
-        <span style="font-size:.72rem;opacity:.9">&nbsp;(지구장:&nbsp;<strong>${chief}</strong>)</span>
+          oninput="dist.name=this.value">
+        <span style="font-size:.72rem;opacity:.9">&nbsp;(지구장:&nbsp;<strong id="chief-${dist.id}">${chief}</strong>)</span>
       </td>`;
     tb.appendChild(hdr);
 
@@ -429,12 +429,27 @@ function render() {
 
           // 청지기 + 인원수 칸
           const tk = document.createElement('td'); tk.className = 'ck'; tk.rowSpan = rs;
-          tk.innerHTML = `
-            <input value="${samter.keeper}" placeholder="청지기"
-              style="width:100%;border:none;background:transparent;text-align:center;
-                     font-size:.74rem;padding:2px;display:block"
-              oninput="samter.keeper=this.value;render()" id="kp-${samter.id}">
-            <div class="ck-count" id="cc-${samter.id}">(${memberCount}명)</div>`;
+          const keeperInp = document.createElement('input');
+          keeperInp.value = samter.keeper;
+          keeperInp.placeholder = '청지기';
+          keeperInp.id = 'kp-' + samter.id;
+          keeperInp.style.cssText =
+            'width:100%;border:none;background:transparent;text-align:center;' +
+            'font-size:.74rem;padding:2px;display:block;outline:none;font-family:inherit';
+          keeperInp.addEventListener('input', function () {
+            samter.keeper = this.value;
+            // 첫 번째 샘터이면 지구장 표시만 갱신 (render 없이)
+            if (si === 0) {
+              const chiefEl = document.getElementById('chief-' + dist.id);
+              if (chiefEl) chiefEl.textContent = this.value || '-';
+            }
+          });
+          const countDiv = document.createElement('div');
+          countDiv.className = 'ck-count';
+          countDiv.id = 'cc-' + samter.id;
+          countDiv.textContent = '(' + memberCount + '명)';
+          tk.appendChild(keeperInp);
+          tk.appendChild(countDiv);
           tr.appendChild(tk);
         }
 
