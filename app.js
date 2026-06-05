@@ -80,7 +80,7 @@ async function login() {
     initData();
   } catch (e) {
     // API 연결 전 로컬 모드로도 동작
-    if (pw === 'samter2026') {
+    if (pw === '1424') {
       sessionStorage.setItem('samter_token', 'local');
       document.getElementById('pw').value = '';
       showApp();
