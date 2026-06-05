@@ -8,7 +8,7 @@
 // ================================================================
 
 // ★ Apps Script 배포 후 아래 URL을 교체하세요
-const API_URL = 'https://script.google.com/macros/s/AKfycbz0SEKnT5y1FAiOQP15fx3uiEN0fEJps81_tpL331AfkcTrpsN3PcmoY5kaqTMpl2Y5/exec';
+const API_URL = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
 const STORAGE_KEY = 'samter_org_final';
 
 // ── 2026년 기본 데이터 ──────────────────────────────────────────
@@ -274,12 +274,49 @@ function saveCurrentToAllData() {
   }));
 }
 
+const SAVE_PASSWORD = '4241';  // 저장 전용 비밀번호
+
 function saveOrg() {
+  // 저장 비밀번호 확인 모달
+  document.getElementById('modal-area').innerHTML = `
+    <div class="modal-bd">
+      <div class="modal-box">
+        <div class="modal-title">저장 확인</div>
+        <div class="modal-sub">${currentYear}년 조직표를 저장합니다.<br>저장 비밀번호를 입력하세요.</div>
+        <div style="margin-bottom:6px">
+          <input type="password" id="save-pw"
+            style="width:100%;padding:10px 12px;border:2px solid #e8e8e8;border-radius:7px;
+                   font-size:1rem;text-align:center;letter-spacing:.2em;outline:none;
+                   transition:border-color .2s"
+            placeholder="비밀번호"
+            onfocus="this.style.borderColor='#1a2744'"
+            onblur="this.style.borderColor='#e8e8e8'"
+            onkeydown="if(event.key==='Enter')confirmSave()">
+          <div id="save-pw-err" style="font-size:.72rem;color:#c0392b;margin-top:5px;min-height:16px;text-align:center"></div>
+        </div>
+        <div class="modal-btns">
+          <button class="mb-cancel" onclick="cancelModal()">취소</button>
+          <button class="mb-ok" onclick="confirmSave()">저장</button>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(() => document.getElementById('save-pw')?.focus(), 60);
+}
+
+function confirmSave() {
+  const pw    = document.getElementById('save-pw')?.value || '';
+  const errEl = document.getElementById('save-pw-err');
+  if (pw !== SAVE_PASSWORD) {
+    errEl.textContent = '비밀번호가 틀렸습니다.';
+    document.getElementById('save-pw').value = '';
+    document.getElementById('save-pw').focus();
+    return;
+  }
+  cancelModal();
   saveCurrentToAllData();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
     toast('저장 완료 ✓', 'ok');
-    // Apps Script에도 저장 시도 (오프라인이면 무시)
     apiCall({ action: 'saveOrg', year: currentYear, districts: allData[currentYear] })
       .catch(() => {});
   } catch (e) {
