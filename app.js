@@ -277,42 +277,62 @@ function saveCurrentToAllData() {
 const SAVE_PASSWORD = '4241';  // 저장 전용 비밀번호
 
 function saveOrg() {
-  // 저장 비밀번호 확인 모달
-  document.getElementById('modal-area').innerHTML = `
-    <div class="modal-bd">
-      <div class="modal-box">
-        <div class="modal-title">저장 확인</div>
-        <div class="modal-sub">${currentYear}년 조직표를 저장합니다.<br>저장 비밀번호를 입력하세요.</div>
-        <div style="margin-bottom:6px">
-          <input type="password" id="save-pw"
-            style="width:100%;padding:10px 12px;border:2px solid #e8e8e8;border-radius:7px;
-                   font-size:1rem;text-align:center;letter-spacing:.2em;outline:none;
-                   transition:border-color .2s"
-            placeholder="비밀번호"
-            onfocus="this.style.borderColor='#1a2744'"
-            onblur="this.style.borderColor='#e8e8e8'"
-            onkeydown="if(event.key==='Enter')confirmSave()">
-          <div id="save-pw-err" style="font-size:.72rem;color:#c0392b;margin-top:5px;min-height:16px;text-align:center"></div>
-        </div>
-        <div class="modal-btns">
-          <button class="mb-cancel" onclick="cancelModal()">취소</button>
-          <button class="mb-ok" onclick="confirmSave()">저장</button>
-        </div>
+  // 저장 비밀번호 확인 — 고정 오버레이 방식
+  let overlay = document.getElementById('save-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'save-overlay';
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:rgba(0,0,0,.45);' +
+      'display:flex;align-items:center;justify-content:center;z-index:9000;padding:20px';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:28px 24px 22px;
+                width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="font-family:'Nanum Myeongjo',serif;font-size:1rem;color:#1a2744;
+                  font-weight:800;margin-bottom:6px">저장 확인</div>
+      <div style="font-size:.75rem;color:#888;margin-bottom:16px;line-height:1.5">
+        ${currentYear}년 조직표를 저장합니다.<br>저장 비밀번호를 입력하세요.
+      </div>
+      <input type="password" id="save-pw" placeholder="저장 비밀번호"
+        style="width:100%;padding:11px 14px;border:2px solid #e0e0e0;border-radius:8px;
+               font-size:1.1rem;text-align:center;letter-spacing:.25em;outline:none;
+               margin-bottom:6px;font-family:inherit;transition:border-color .2s"
+        onfocus="this.style.borderColor='#1a2744'"
+        onblur="this.style.borderColor='#e0e0e0'"
+        onkeydown="if(event.key==='Enter')confirmSave();if(event.key==='Escape')closeSaveOverlay()">
+      <div id="save-pw-err"
+        style="font-size:.72rem;color:#c0392b;min-height:16px;text-align:center;margin-bottom:12px">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="closeSaveOverlay()"
+          style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;
+                 background:#f0f0f0;color:#555;border:none;cursor:pointer">취소</button>
+        <button onclick="confirmSave()"
+          style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;
+                 background:#1a2744;color:#fff;border:none;cursor:pointer">저장</button>
       </div>
     </div>`;
+  overlay.style.display = 'flex';
   setTimeout(() => document.getElementById('save-pw')?.focus(), 60);
 }
 
+function closeSaveOverlay() {
+  const overlay = document.getElementById('save-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
 function confirmSave() {
-  const pw    = document.getElementById('save-pw')?.value || '';
+  const pw    = (document.getElementById('save-pw')?.value || '').trim();
   const errEl = document.getElementById('save-pw-err');
   if (pw !== SAVE_PASSWORD) {
-    errEl.textContent = '비밀번호가 틀렸습니다.';
-    document.getElementById('save-pw').value = '';
-    document.getElementById('save-pw').focus();
+    if (errEl) errEl.textContent = '비밀번호가 틀렸습니다.';
+    const inp = document.getElementById('save-pw');
+    if (inp) { inp.value = ''; inp.focus(); }
     return;
   }
-  cancelModal();
+  closeSaveOverlay();
   saveCurrentToAllData();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
@@ -582,5 +602,5 @@ document.addEventListener('click', function (e) {
 
 // ESC 키
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') { closeYP(); closeDp(); cancelModal(); }
+  if (e.key === 'Escape') { closeYP(); closeDp(); cancelModal(); closeSaveOverlay(); }
 });
