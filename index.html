@@ -191,6 +191,9 @@ input{font-family:var(--font-sans);outline:none}
 /* ── 통계 ────────────────────────────────────── */
 .stat{font-size:.71rem;color:var(--ink3);text-align:center;margin-bottom:8px}
 
+/* ── 2열 레이아웃 ──────────────────────────── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+
 /* ── 조직표 테이블 ─────────────────────────── */
 .org-wrap{
   background:#fff;border:2.5px solid var(--navy);
@@ -202,7 +205,7 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
 /* 지구 헤더행 */
 .r-dh td{
   background:var(--hdr);color:#fff;
-  font-weight:700;font-size:.77rem;padding:8px 10px;
+  font-weight:700;font-size:.72rem;padding:6px 8px;
   border:1px solid var(--hdr-border);
 }
 
@@ -211,31 +214,31 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
 
 /* 샘터 번호 칸 */
 .cn{
-  background:#e8eef7;width:44px;min-width:44px;text-align:center;
+  background:#e8eef7;width:34px;min-width:34px;text-align:center;
   font-weight:700;color:var(--navy);
-  border-right:2.5px solid var(--samter-sep)!important;
+  border-right:2px solid var(--samter-sep)!important;
 }
 
 /* 청지기 칸 */
 .ck{
-  width:94px;min-width:94px;background:#f2f5fa;text-align:center;
-  font-size:.74rem;color:var(--ink2);font-weight:500;
-  border-right:2.5px solid var(--samter-sep)!important;
-  padding:4px 3px;line-height:1.4;
+  width:72px;min-width:72px;background:#f2f5fa;text-align:center;
+  font-size:.68rem;color:var(--ink2);font-weight:500;
+  border-right:2px solid var(--samter-sep)!important;
+  padding:3px 2px;line-height:1.3;
 }
-.ck-count{font-size:.68rem;color:var(--hdr);font-weight:700;margin-top:2px}
+.ck-count{font-size:.63rem;color:var(--hdr);font-weight:700;margin-top:1px}
 
 /* 멤버 칸 */
 .cm{padding:0}
 .mg{display:grid;grid-template-columns:repeat(5,1fr);width:100%}
-.mc{border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);min-height:31px;display:flex;align-items:center}
+.mc{border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);min-height:26px;display:flex;align-items:center}
 .mc:nth-child(5n){border-right:none}
 .mc input{
-  width:100%;height:100%;min-height:31px;border:none;background:transparent;
-  padding:3px 6px;font-size:.76rem;color:var(--ink);
+  width:100%;height:100%;min-height:26px;border:none;background:transparent;
+  padding:2px 4px;font-size:.68rem;color:var(--ink);
 }
 .mc input:focus{background:#fffde8;outline:none}
-.mc input::placeholder{color:#ccc;font-size:.67rem}
+.mc input::placeholder{color:#ccc;font-size:.62rem}
 
 /* 샘터 사이 구분선 */
 .r-sep td{
@@ -383,8 +386,13 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
 
     <div class="stat" id="stat"></div>
 
-    <div class="org-wrap">
-      <table><tbody id="tbody"></tbody></table>
+    <div class="two-col" id="two-col">
+      <div class="org-wrap" id="col-left">
+        <table><tbody id="tbody-left"></tbody></table>
+      </div>
+      <div class="org-wrap" id="col-right">
+        <table><tbody id="tbody-right"></tbody></table>
+      </div>
     </div>
 
   </main>
