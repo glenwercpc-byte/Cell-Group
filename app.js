@@ -47,11 +47,7 @@ let selMode = null;
 //  초기화
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
-  const token = sessionStorage.getItem('samter_token');
-  if (token) {
-    showApp();
-    initData();
-  }
+  initData();
 });
 
 function initData() {
@@ -63,56 +59,11 @@ function initData() {
   loadYear('2026');
 }
 
-// ================================================================
-//  인증
-// ================================================================
-async function login() {
-  const pw  = document.getElementById('pw').value.trim();
-  const err = document.getElementById('lerr');
-  if (!pw) { err.textContent = '비밀번호를 입력하세요.'; return; }
-  err.textContent = '';
-
-  try {
-    const res = await apiCall({ action: 'login', password: pw }, false);
-    sessionStorage.setItem('samter_token', res.sessionToken);
-    document.getElementById('pw').value = '';
-    showApp();
-    initData();
-  } catch (e) {
-    // API 연결 전 로컬 모드로도 동작
-    if (pw === '1424') {
-      sessionStorage.setItem('samter_token', 'local');
-      document.getElementById('pw').value = '';
-      showApp();
-      initData();
-    } else {
-      err.textContent = '비밀번호가 틀렸습니다.';
-    }
-  }
-}
-
-async function logout() {
-  try { await apiCall({ action: 'logout' }); } catch (_) {}
-  sessionStorage.removeItem('samter_token');
-  allData = {}; state = []; currentYear = '2026';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login').style.display = 'flex';
-  document.getElementById('pw').value = '';
-}
-
-function showApp() {
-  document.getElementById('login').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-}
 
 // ================================================================
 //  API 통신
 // ================================================================
-async function apiCall(data, useToken = true) {
-  if (useToken) {
-    const token = sessionStorage.getItem('samter_token');
-    if (token && token !== 'local') data.sessionToken = token;
-  }
+async function apiCall(data) {
   const res  = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
