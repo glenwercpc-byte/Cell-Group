@@ -387,15 +387,21 @@ function doAddSamter() {
 }
 
 // ================================================================
-//  렌더링
+//  렌더링 — 1·2지구 왼쪽, 3·4지구 오른쪽 2열 배치
 // ================================================================
 function render() {
-  const tb = document.getElementById('tbody');
-  tb.innerHTML = '';
+  const tbLeft  = document.getElementById('tbody-left');
+  const tbRight = document.getElementById('tbody-right');
+  tbLeft.innerHTML = '';
+  tbRight.innerHTML = '';
 
+  // 지구 인덱스 0,1 → 왼쪽 / 2,3 → 오른쪽
   state.forEach((dist, di) => {
-    // 지구 사이 구분선
-    if (di > 0) {
+    const tb = di < 2 ? tbLeft : tbRight;
+    const localDi = di % 2;  // 같은 tbody 안에서의 순서
+
+    // 지구 사이 구분선 (같은 열 내 두 번째 지구부터)
+    if (localDi > 0) {
       const tr = document.createElement('tr'); tr.className = 'r-dist-sep';
       const td = document.createElement('td'); td.colSpan = 3;
       tr.appendChild(td); tb.appendChild(tr);
@@ -405,14 +411,14 @@ function render() {
     const chief = dist.samters[0]?.keeper || '-';
     const hdr = document.createElement('tr'); hdr.className = 'r-dh';
     hdr.innerHTML = `
-      <td style="width:44px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">샘터</td>
-      <td style="width:94px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">청지기</td>
-      <td style="text-align:center">
+      <td style="width:34px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">샘터</td>
+      <td style="width:72px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">청지기</td>
+      <td style="text-align:center;font-size:.68rem">
         <input value="${dist.name}"
           style="background:transparent;border:none;color:#fff;font-weight:700;
-                 font-size:.8rem;padding:0;font-family:inherit;width:50px;text-align:center"
+                 font-size:.72rem;padding:0;font-family:inherit;width:46px;text-align:center"
           oninput="dist.name=this.value">
-        <span style="font-size:.72rem;opacity:.9">&nbsp;(지구장:&nbsp;<strong id="chief-${dist.id}">${chief}</strong>)</span>
+        <span style="opacity:.88">&nbsp;(지구장:&nbsp;<strong id="chief-${dist.id}">${chief}</strong>)</span>
       </td>`;
     tb.appendChild(hdr);
 
@@ -443,7 +449,7 @@ function render() {
           const tn = document.createElement('td'); tn.className = 'cn'; tn.rowSpan = rs;
           tn.innerHTML = `<input value="${samter.num}" placeholder="번호"
             style="width:100%;border:none;background:transparent;text-align:center;
-                   font-weight:700;font-size:.85rem;color:var(--navy);padding:4px 2px"
+                   font-weight:700;font-size:.75rem;color:var(--navy);padding:3px 1px;outline:none"
             oninput="samter.num=this.value">`;
           tr.appendChild(tn);
 
@@ -455,10 +461,9 @@ function render() {
           keeperInp.id = 'kp-' + samter.id;
           keeperInp.style.cssText =
             'width:100%;border:none;background:transparent;text-align:center;' +
-            'font-size:.74rem;padding:2px;display:block;outline:none;font-family:inherit';
+            'font-size:.66rem;padding:2px;display:block;outline:none;font-family:inherit';
           keeperInp.addEventListener('input', function () {
             samter.keeper = this.value;
-            // 첫 번째 샘터이면 지구장 표시만 갱신 (render 없이)
             if (si === 0) {
               const chiefEl = document.getElementById('chief-' + dist.id);
               if (chiefEl) chiefEl.textContent = this.value || '-';
@@ -485,7 +490,6 @@ function render() {
 
           inp.addEventListener('input', function () {
             row5[ci] = this.value;
-            // 인원수만 빠르게 갱신
             const cnt  = samter.rows.flat().filter(Boolean).length;
             const ccEl = document.getElementById('cc-' + samter.id);
             if (ccEl) ccEl.textContent = '(' + cnt + '명)';
@@ -496,10 +500,8 @@ function render() {
             if (e.key !== 'Enter') return;
             e.preventDefault();
             if (ci < 4) {
-              // 같은 행 다음 칸
               g.querySelectorAll('input')[ci + 1]?.focus();
             } else {
-              // 5번째 칸 → 다음 행 첫칸 (없으면 새 행 추가)
               const nri = ri + 1;
               if (nri >= samter.rows.length) {
                 samter.rows.push(['', '', '', '', '']);
