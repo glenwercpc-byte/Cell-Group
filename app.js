@@ -2,7 +2,7 @@
 //  시카고 언약 장로교회 샘터 조직표 — app.js  (최종)
 //  - 연도별 조직표 관리 (현재 고정 + 새 연도 직접 입력)
 //  - 샘터 추가: 번호 입력으로 해당 지구에 자동 삽입
-//  - 5번째 칸 Enter → 자동 줄 추가
+//  - 10번째 칸 Enter → 자동 줄 추가
 //  - 청지기 칸에 총 인원수 표시
 //  - 엑셀 내보내기
 // ================================================================
@@ -355,16 +355,34 @@ function render() {
     // 지구 헤더
     const chief = dist.samters[0]?.keeper || '-';
     const hdr = document.createElement('tr'); hdr.className = 'r-dh';
-    hdr.innerHTML = `
-      <td style="width:44px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">샘터</td>
-      <td style="width:94px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">청지기</td>
-      <td style="text-align:center">
-        <input value="${dist.name}"
-          style="background:transparent;border:none;color:#fff;font-weight:700;
-                 font-size:.8rem;padding:0;font-family:inherit;width:50px;text-align:center"
-          oninput="dist.name=this.value">
-        <span style="font-size:.72rem;opacity:.9">&nbsp;(지구장:&nbsp;<strong id="chief-${dist.id}">${chief}</strong>)</span>
-      </td>`;
+
+    const tdNum = document.createElement('td');
+    tdNum.style.cssText = 'width:44px;text-align:center;border-right:2px solid rgba(255,255,255,.28)';
+    tdNum.textContent = '샘터';
+    hdr.appendChild(tdNum);
+
+    const tdKeeper = document.createElement('td');
+    tdKeeper.style.cssText = 'width:94px;text-align:center;border-right:2px solid rgba(255,255,255,.28)';
+    tdKeeper.textContent = '청지기';
+    hdr.appendChild(tdKeeper);
+
+    const tdTitle = document.createElement('td');
+    tdTitle.style.textAlign = 'center';
+
+    const nameInp = document.createElement('input');
+    nameInp.value = dist.name;
+    nameInp.style.cssText =
+      'background:transparent;border:none;color:#fff;font-weight:700;' +
+      'font-size:.8rem;padding:0;font-family:inherit;width:50px;text-align:center;outline:none';
+    nameInp.addEventListener('input', function () { dist.name = this.value; });
+
+    const chiefSpan = document.createElement('span');
+    chiefSpan.style.cssText = 'font-size:.72rem;opacity:.9';
+    chiefSpan.innerHTML = '&nbsp;(지구장:&nbsp;<strong id="chief-' + dist.id + '">' + chief + '</strong>)';
+
+    tdTitle.appendChild(nameInp);
+    tdTitle.appendChild(chiefSpan);
+    hdr.appendChild(tdTitle);
     tb.appendChild(hdr);
 
     if (!dist.samters.length) {
@@ -392,10 +410,14 @@ function render() {
         if (ri === 0) {
           // 샘터 번호 칸
           const tn = document.createElement('td'); tn.className = 'cn'; tn.rowSpan = rs;
-          tn.innerHTML = `<input value="${samter.num}" placeholder="번호"
-            style="width:100%;border:none;background:transparent;text-align:center;
-                   font-weight:700;font-size:.85rem;color:var(--navy);padding:4px 2px;outline:none"
-            oninput="samter.num=this.value">`;
+          const numInp = document.createElement('input');
+          numInp.value = samter.num;
+          numInp.placeholder = '번호';
+          numInp.style.cssText =
+            'width:100%;border:none;background:transparent;text-align:center;' +
+            'font-weight:700;font-size:.85rem;color:var(--navy);padding:4px 2px;outline:none;font-family:inherit';
+          numInp.addEventListener('input', function () { samter.num = this.value; });
+          tn.appendChild(numInp);
           tr.appendChild(tn);
 
           // 청지기 + 인원수 칸
