@@ -1,371 +1,558 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a2744">
-<title>시카고 언약 장로교회 샘터 조직표</title>
-<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-/* ── 리셋 & 변수 ───────────────────────────────── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-:root{
-  --navy:#1a2744;--navy2:#243058;
-  --hdr:#3a5a8c;
-  --hdr-border:rgba(255,255,255,.25);
-  --line:#aaa;--line2:#d8d8d8;--bg:#f5f3ee;
-  --white:#ffffff;
-  --ink:#1a1a1a;--ink2:#444;--ink3:#888;
-  --green:#2d6a4f;--green2:#40916c;
-  --red:#c0392b;
-  --samter-sep:#3a5a8c;
-  --font-serif:'Nanum Myeongjo',serif;
-  --font-sans:'Noto Sans KR',sans-serif;
-}
-body{font-family:var(--font-sans);background:var(--bg);color:var(--ink);min-height:100dvh}
-button{cursor:pointer;font-family:var(--font-sans);border:none;outline:none}
-input{font-family:var(--font-sans);outline:none}
-.hidden{display:none!important}
+// ================================================================
+//  시카고 언약 장로교회 샘터 조직표 — app.js  (최종)
+//  - 연도별 조직표 관리 (현재 고정 + 새 연도 직접 입력)
+//  - 샘터 추가: 번호 입력으로 해당 지구에 자동 삽입
+//  - 5번째 칸 Enter → 자동 줄 추가
+//  - 청지기 칸에 총 인원수 표시
+//  - 엑셀 내보내기
+// ================================================================
 
+// ★ Apps Script 배포 후 아래 URL을 교체하세요
+const API_URL = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
+const STORAGE_KEY = 'samter_org_final';
 
+// ── 2026년 기본 데이터 ──────────────────────────────────────────
+const BASE_2026 = [
+  {name:'1지구',samters:[
+    {num:'11',keeper:'김건우(완상)',members:['김영옥','김영자(명희)','김오화','김정순','박혜자','박영욱(이영일)','박창만(정수)','송혜주','이경자','이보원','이순자','이인옥','이정우(은선)','이Connie','정해일(영숙)','허명희','홍인기(순원)']},
+    {num:'12',keeper:'정찬경(순옥)',members:['고승남(영옥)','구태회(석순)','김진구(숙자)','박재선(승숙)','유홍기(윤옥)','이경희(한용)','이금성(봉희)','이기상(영례)','이인기(분양)','이종우(문자)','최봉덕']},
+    {num:'13',keeper:'이신민목사(청년)',members:['김성은','김인중','박지원','신정수','신예송','윤율','하경원']},
+  ]},
+  {name:'2지구',samters:[
+    {num:'21',keeper:'임채석(계원)',members:['권도영','김재영(순영)','천용철(도희)','김태원','김희석(연화)','박준환(숙자)','박태수(윤자)','신석균(송자)','황인철(명숙)','정정강']},
+    {num:'22',keeper:'윤자명',members:['강혜영','노은님','송정민(선)','심정옥','여선희','이규호(현순)','이진방(숙자)','이춘강','장윤일','채경주','최홍렬(금선)','하재관(영)','황산성','현종환(금수)','김동진(정숙)']},
+    {num:'23',keeper:'송정은(심윤문)',members:['강철희(수정)','고유심','김미영','김성민(이의정)','김영식(명심)','김정오(수진)','김Sara','김태봉(정아)','김형률(박신영)','노동기','박정인(주현)','서인호(재경)','설재두','설창욱','윤준용(순희)','최은경','최하늘','하재원(정우)']},
+  ]},
+  {name:'3지구',samters:[
+    {num:'31',keeper:'공길봉(명심)',members:['김문주','김한영(화자)','문준숙','조옥자','백경환(해나)','서성규(선영)','심상호(은영)','심윤조(경화)','윤정호(순임)','이근후(신자)','이병기(혜숙)','이재욱(춘자)']},
+    {num:'32',keeper:'김미경',members:['김정한','김복님','김옥경','김춘경','김춘매','김혜경','박애경','서조연','안연숙','윤민자','이두리','이미자','이조문','이혜자','한지영']},
+    {num:'33',keeper:'이윤종(남이)',members:['강위기','강성혜','강효숙','김금자','김명진(선희)','김요한(미화)','박양숙','송성례','손영숙','이명자','이완심','임덕근','장춘근','홍영자']},
+  ]},
+  {name:'4지구',samters:[
+    {num:'41',keeper:'홍기성(현자)',members:['김동진(정숙)','김선혜','김우일(영회)','송세훈(정숙)','안경찬(임춘)','엔드류영(베티)','이무영(선희)','장명무(명숙)','최준택(영숙)','한상철(애경)','홍길봉(순인)']},
+    {num:'42',keeper:'전복순(성익)',members:['강상수(박그레이스)','권효섭(정희)','김건국(혜숙)','김영숙','김용규(선영)','박순길','서용재(옥주)','서정률(연실)','송영심(명우)','이석기(은령)','정차곤(영애)','채지원','장진술(경자)','주동린']},
+    {num:'43',keeper:'황광연(은주)',members:['김귀남(창화)','김미희(홍섭)','김병식(희숙)','김숙인','김승주','김완수(주희)','박용병(현주)','변지웅(군희)','염은경','이샤론','이인석(숙화)','전상우(선희)','정해자','최규일(은영)','최대식(옥현)']},
+  ]},
+];
 
-/* ── 앱 ──────────────────────────────────────── */
-#app{display:block}
+// ── 전역 상태 ────────────────────────────────────────────────────
+let allData = {};        // { '2026': [...raw...], '2027': [...] }
+let currentYear = '2026';
+let state = [];          // 현재 연도 작업 상태 (districts)
+let nextSid = 500;
+let pendingYear = null;
+let selMode = null;
 
-/* ── 헤더 ────────────────────────────────────── */
-.hdr{
-  background:var(--navy);color:#fff;
-  padding:0 20px;height:52px;
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:200;
-  box-shadow:0 2px 12px rgba(0,0,0,.2);
-}
-.hdr-brand{font-family:var(--font-serif);font-size:1rem;font-weight:700;letter-spacing:.03em}
-.hdr-actions{display:flex;gap:8px}
-.hbtn{
-  background:rgba(255,255,255,.12);color:#fff;
-  border:1px solid rgba(255,255,255,.25);
-  padding:5px 12px;border-radius:6px;font-size:.76rem;font-weight:500;
-  transition:background .2s;
-}
-.hbtn:hover{background:rgba(255,255,255,.22)}
-.hbtn.save{background:var(--green);border-color:var(--green)}
-.hbtn.save:hover{background:var(--green2)}
-.hbtn.logout{border-color:rgba(255,80,80,.4)}
+// ================================================================
+//  초기화
+// ================================================================
+window.addEventListener('DOMContentLoaded', () => {
+  initData();
+});
 
-/* ── 메인 ────────────────────────────────────── */
-.main{max-width:1100px;margin:0 auto;padding:22px 16px 60px}
-
-/* ── 페이지 타이틀 ──────────────────────────── */
-.page-title{text-align:center;margin-bottom:18px;padding:12px 0 10px;border-bottom:2px solid var(--navy)}
-.page-title h1{font-family:var(--font-serif);font-size:1.15rem;color:var(--navy);font-weight:800;letter-spacing:.04em;margin-bottom:8px}
-.title-year-row{display:flex;align-items:center;justify-content:center}
-.title-fix{font-size:.92rem;color:var(--navy);font-weight:600}
-
-/* ── 연도 버튼 & 패널 ───────────────────────── */
-.year-wrap{position:relative;display:inline-block}
-.year-btn{
-  background:var(--navy);color:#fff;border:none;
-  padding:5px 10px 5px 12px;font-size:.92rem;font-weight:700;
-  cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:4px;
-  font-family:var(--font-sans);transition:background .15s;
-}
-.year-btn:hover{background:var(--navy2)}
-.year-btn .arr{font-size:.56rem;opacity:.8}
-
-.year-panel{
-  position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
-  background:#fff;border:1.5px solid var(--navy);border-radius:10px;
-  z-index:999;min-width:210px;
-  box-shadow:0 10px 28px rgba(0,0,0,.18);overflow:hidden;
-}
-.yp-head{background:var(--navy);color:#fff;font-size:.71rem;font-weight:600;padding:8px 14px;text-align:center;letter-spacing:.06em}
-.yp-current{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#eaf0fb;border-bottom:1px solid var(--line2);cursor:pointer;transition:background .12s}
-.yp-current:hover{background:#dce7f7}
-.yp-current .yn{font-size:.88rem;font-weight:700;color:var(--navy)}
-.yp-current .yb-cur{font-size:.68rem;padding:2px 8px;border-radius:10px;background:#d4edda;color:#155724;font-weight:600}
-.yp-saved{border-top:1px solid var(--line2)}
-.yp-saved-head{font-size:.69rem;color:var(--ink3);font-weight:600;padding:6px 16px 3px;letter-spacing:.05em}
-.yp-saved-item{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;cursor:pointer;border-bottom:.5px solid var(--line2);transition:background .12s}
-.yp-saved-item:last-child{border-bottom:none}
-.yp-saved-item:hover{background:#f0f3f8}
-.yp-saved-item .yn{font-size:.85rem;font-weight:600;color:var(--navy)}
-.yp-saved-item .yb-saved{font-size:.67rem;padding:2px 7px;border-radius:9px;background:#fff3cd;color:#856404;font-weight:600}
-.yp-new{padding:12px 16px}
-.yp-new label{display:block;font-size:.72rem;font-weight:600;color:var(--ink3);margin-bottom:6px}
-.yp-new input{
-  width:100%;border:1.5px solid var(--line2);border-radius:5px;
-  padding:7px 10px;font-size:.88rem;text-align:center;transition:border-color .2s;
-}
-.yp-new input:focus{border-color:var(--navy)}
-.yp-err{font-size:.7rem;color:var(--red);margin-top:4px;min-height:14px}
-.yp-new-btns{display:flex;gap:6px;margin-top:8px}
-.yp-new-btns button{flex:1;padding:7px;border-radius:5px;font-size:.74rem;font-weight:600}
-.ypb-cancel{background:#f0f0f0;color:#555}.ypb-cancel:hover{background:#e0e0e0}
-.ypb-ok{background:var(--navy);color:#fff}.ypb-ok:hover{background:var(--navy2)}
-
-/* ── 연도 전환 모달 ─────────────────────────── */
-.modal-bd{
-  min-height:260px;background:rgba(0,0,0,.45);
-  display:flex;align-items:center;justify-content:center;
-  border-radius:8px;margin:12px 0;padding:20px;
-}
-.modal-box{background:#fff;border-radius:12px;padding:26px 22px 20px;width:100%;max-width:330px}
-.modal-title{font-family:var(--font-serif);font-size:.98rem;color:var(--navy);font-weight:800;margin-bottom:5px}
-.modal-sub{font-size:.74rem;color:var(--ink3);margin-bottom:16px;line-height:1.5}
-.modal-opts{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
-.modal-opt{
-  border:1.5px solid var(--line2);border-radius:8px;padding:11px 13px;
-  cursor:pointer;transition:border-color .15s,background .15s;
-  text-align:left;background:#fff;width:100%;
-}
-.modal-opt:hover{border-color:var(--navy);background:#f0f3f8}
-.modal-opt.sel{border-color:var(--navy);background:#eaf0fb}
-.opt-t{font-size:.83rem;font-weight:700;color:var(--navy);margin-bottom:2px}
-.opt-d{font-size:.71rem;color:var(--ink3);line-height:1.4}
-.modal-btns{display:flex;gap:7px}
-.modal-btns button{flex:1;padding:9px;border-radius:7px;font-size:.78rem;font-weight:600}
-.mb-cancel{background:#f0f0f0;color:#555}
-.mb-ok{background:var(--navy);color:#fff}
-.mb-ok:disabled{background:#ccc;cursor:default}
-
-/* ── 컨트롤 바 ──────────────────────────────── */
-.ctrl{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
-.ctrl-left{font-size:.71rem;color:var(--ink3)}
-.ctrl-right{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-
-.btn-dist{background:var(--navy);color:#fff;padding:6px 13px;border-radius:5px;font-size:.73rem;font-weight:600;border:none}
-.btn-dist:hover{background:var(--navy2)}
-
-/* 샘터 추가 드롭다운 */
-.dp-wrap{position:relative;display:inline-block}
-.btn-samt{background:#fff;color:var(--navy);padding:6px 13px;border-radius:5px;font-size:.73rem;font-weight:600;border:1.5px solid var(--navy)}
-.btn-samt:hover{background:#f0f3f8}
-.dp-box{
-  position:absolute;top:calc(100% + 6px);right:0;
-  background:#fff;border:1.5px solid var(--navy);border-radius:8px;
-  padding:13px 14px;z-index:500;width:210px;
-  box-shadow:0 8px 22px rgba(0,0,0,.14);
-}
-.dp-box label{font-size:.72rem;font-weight:600;color:var(--ink2);display:block;margin-bottom:5px}
-.dp-box input{
-  width:100%;border:1.5px solid var(--line2);border-radius:5px;
-  padding:7px 10px;font-size:.88rem;text-align:center;transition:border-color .2s;
-}
-.dp-box input:focus{border-color:var(--navy)}
-.dp-hint{font-size:.67rem;color:var(--ink3);margin-top:4px;line-height:1.4}
-.dp-err{font-size:.69rem;color:var(--red);margin-top:3px;min-height:13px}
-.dp-btns{display:flex;gap:6px;margin-top:9px}
-.dp-btns button{flex:1;padding:6px;border-radius:5px;font-size:.73rem;font-weight:600}
-.db-ok{background:var(--navy);color:#fff}
-.db-cancel{background:#f0f0f0;color:#555}
-
-.btn-save-ctrl{background:var(--green);color:#fff;padding:6px 13px;border-radius:5px;font-size:.73rem;font-weight:600;border:none}
-.btn-save-ctrl:hover{background:var(--green2)}
-
-/* ── 통계 ────────────────────────────────────── */
-.stat{font-size:.71rem;color:var(--ink3);text-align:center;margin-bottom:8px}
-
-/* ── 2열 레이아웃 ──────────────────────────── */
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
-
-/* ── 조직표 테이블 ─────────────────────────── */
-.org-wrap{
-  background:#fff;border:2.5px solid var(--navy);
-  border-radius:4px;overflow:hidden;
-  box-shadow:0 3px 14px rgba(0,0,0,.1);
-}
-table{width:100%;border-collapse:collapse;font-size:.78rem}
-
-/* 지구 헤더행 */
-.r-dh td{
-  background:var(--hdr);color:#fff;
-  font-weight:700;font-size:.72rem;padding:6px 8px;
-  border:1px solid var(--hdr-border);
+function initData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) allData = JSON.parse(saved);
+  } catch (e) {}
+  if (!allData['2026']) allData['2026'] = BASE_2026;
+  loadYear('2026');
 }
 
-/* 샘터 데이터행 */
-.r-s td{border:1px solid var(--line2);padding:0;vertical-align:middle}
 
-/* 샘터 번호 칸 */
-.cn{
-  background:#e8eef7;width:34px;min-width:34px;text-align:center;
-  font-weight:700;color:var(--navy);
-  border-right:2px solid var(--samter-sep)!important;
+// ================================================================
+//  API 통신
+// ================================================================
+async function apiCall(data) {
+  const res  = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || '서버 오류');
+  return json.data;
 }
 
-/* 청지기 칸 */
-.ck{
-  width:72px;min-width:72px;background:#f2f5fa;text-align:center;
-  font-size:.68rem;color:var(--ink2);font-weight:500;
-  border-right:2px solid var(--samter-sep)!important;
-  padding:3px 2px;line-height:1.3;
-}
-.ck-count{font-size:.63rem;color:var(--hdr);font-weight:700;margin-top:1px}
-
-/* 멤버 칸 */
-.cm{padding:0}
-.mg{display:grid;grid-template-columns:repeat(5,1fr);width:100%}
-.mc{border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);min-height:26px;display:flex;align-items:center}
-.mc:nth-child(5n){border-right:none}
-.mc input{
-  width:100%;height:100%;min-height:26px;border:none;background:transparent;
-  padding:2px 4px;font-size:.68rem;color:var(--ink);
-}
-.mc input:focus{background:#fffde8;outline:none}
-.mc input::placeholder{color:#ccc;font-size:.62rem}
-
-/* 샘터 사이 구분선 */
-.r-sep td{
-  height:0;padding:0;border:none;
-  border-top:2.5px solid var(--samter-sep);
-  background:var(--bg);
-}
-/* 지구 사이 구분선 */
-.r-dist-sep td{
-  height:10px;background:var(--bg);
-  border:none;border-top:4px solid var(--navy);
+// ================================================================
+//  연도 패널
+// ================================================================
+function toggleYP() {
+  const p = document.getElementById('yp');
+  const willOpen = p.classList.contains('hidden');
+  p.classList.toggle('hidden');
+  if (willOpen) {
+    refreshSavedList();
+    document.getElementById('new-year-inp').value = '';
+    document.getElementById('yp-err').textContent = '';
+    setTimeout(() => document.getElementById('new-year-inp').focus(), 60);
+  }
 }
 
-.empty-d td{
-  text-align:center;padding:12px;color:var(--ink3);
-  font-size:.73rem;border:1px dashed var(--line2);
+function closeYP() {
+  document.getElementById('yp').classList.add('hidden');
 }
 
-/* ── 토스트 ──────────────────────────────────── */
-#toast{
-  position:fixed;bottom:24px;left:50%;
-  transform:translateX(-50%) translateY(8px);
-  background:var(--navy);color:#fff;
-  padding:8px 20px;border-radius:20px;
-  font-size:.8rem;font-weight:500;
-  opacity:0;pointer-events:none;
-  transition:opacity .3s,transform .3s;
-  z-index:9999;white-space:nowrap;
+function refreshSavedList() {
+  document.getElementById('yp-cur-num').textContent = currentYear;
+
+  const others = Object.keys(allData)
+    .filter(y => y !== currentYear)
+    .map(Number).sort((a, b) => b - a);
+
+  const savedEl = document.getElementById('yp-saved');
+  const listEl  = document.getElementById('yp-saved-list');
+
+  if (!others.length) { savedEl.classList.add('hidden'); return; }
+  savedEl.classList.remove('hidden');
+  listEl.innerHTML = '';
+  others.forEach(y => {
+    const div = document.createElement('div');
+    div.className = 'yp-saved-item';
+    div.innerHTML = `<span class="yn">${y}년</span><span class="yb-saved">저장됨</span>`;
+    div.onclick = () => selectYear(String(y));
+    listEl.appendChild(div);
+  });
 }
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-#toast.ok{background:var(--green)}
-#toast.err{background:var(--red)}
 
-/* ── 반응형 ──────────────────────────────────── */
-@media(max-width:640px){
-  .main{padding:14px 8px 40px}
-  .mg{grid-template-columns:repeat(3,1fr)}
-  .mc:nth-child(5n){border-right:1px solid var(--line2)}
-  .mc:nth-child(3n){border-right:none}
-  .hdr{padding:0 12px}
-  .ctrl-left{display:none}
+function submitNewYear() {
+  const val  = document.getElementById('new-year-inp').value.trim();
+  const errEl = document.getElementById('yp-err');
+  const y = parseInt(val);
+  if (!val || isNaN(y) || y < 2024 || y > 2099) {
+    errEl.textContent = '2024~2099 사이 연도를 입력하세요.'; return;
+  }
+  if (String(y) === currentYear) {
+    errEl.textContent = '현재 연도입니다.'; return;
+  }
+  errEl.textContent = '';
+  selectYear(String(y));
 }
-@media(max-width:400px){
-  .lcard{padding:36px 20px 28px}
-  .mg{grid-template-columns:repeat(2,1fr)}
-  .mc:nth-child(3n){border-right:1px solid var(--line2)}
-  .mc:nth-child(2n){border-right:none}
-  .ck{width:72px;min-width:72px}
+
+function selectYear(y) {
+  closeYP();
+  if (y === currentYear) return;
+  saveCurrentToAllData();
+  if (allData[y]) { loadYear(y); return; }
+  // 새 연도 → 모달
+  pendingYear = y; selMode = null;
+  showYearModal(y);
 }
-</style>
-</head>
-<body>
 
-<!-- 앱 -->
-<div id="app">
-  <header class="hdr">
-    <div class="hdr-brand">🌿 샘터 조직표</div>
-    <div class="hdr-actions">
-      <button class="hbtn save" onclick="saveOrg()">💾 저장</button>
-      <button class="hbtn" onclick="doExport()">⬇ 엑셀</button>
-
-    </div>
-  </header>
-
-  <main class="main">
-
-    <!-- 페이지 타이틀 -->
-    <div class="page-title">
-      <h1>시카고 언약 장로교회</h1>
-      <div class="title-year-row">
-        <div class="year-wrap" id="yw">
-          <button class="year-btn" onclick="toggleYP()">
-            <span id="yd">2026</span>년
-            <span class="arr">▼</span>
+// ================================================================
+//  연도 전환 모달
+// ================================================================
+function showYearModal(y) {
+  document.getElementById('modal-area').innerHTML = `
+    <div class="modal-bd">
+      <div class="modal-box">
+        <div class="modal-title">${y}년 조직표 만들기</div>
+        <div class="modal-sub">${currentYear}년 조직표를 기반으로<br>${y}년 새 조직표를 시작합니다.</div>
+        <div class="modal-opts">
+          <button class="modal-opt" id="opt-copy" onclick="pickMode('copy')">
+            <div class="opt-t">1. 현재 인원 그대로 사용</div>
+            <div class="opt-d">${currentYear}년 샘터 구성과 조원 명단을<br>${y}년으로 그대로 복사합니다.</div>
           </button>
-          <div class="year-panel hidden" id="yp">
-            <div class="yp-head">조직표 연도 선택</div>
-            <!-- 현재 연도 고정 -->
-            <div class="yp-current" onclick="selectYear(currentYear)">
-              <span class="yn" id="yp-cur-num">2026</span>
-              <span class="yb-cur">현재</span>
-            </div>
-            <!-- 저장된 다른 연도 -->
-            <div class="yp-saved hidden" id="yp-saved">
-              <div class="yp-saved-head">저장된 연도</div>
-              <div id="yp-saved-list"></div>
-            </div>
-            <!-- 새 연도 직접 입력 -->
-            <div class="yp-new">
-              <label>새 연도 직접 입력</label>
-              <input type="number" id="new-year-inp" placeholder="예) 2027"
-                     min="2024" max="2099"
-                     onkeydown="if(event.key==='Enter')submitNewYear()">
-              <div class="yp-err" id="yp-err"></div>
-              <div class="yp-new-btns">
-                <button class="ypb-cancel" onclick="closeYP()">취소</button>
-                <button class="ypb-ok" onclick="submitNewYear()">이동</button>
-              </div>
-            </div>
-          </div>
+          <button class="modal-opt" id="opt-fresh" onclick="pickMode('fresh')">
+            <div class="opt-t">2. 전면 재조정</div>
+            <div class="opt-d">지구·샘터 구조만 유지하고<br>조원 명단을 비워 새로 입력합니다.</div>
+          </button>
         </div>
-        <span class="title-fix">&nbsp;샘터 조직표</span>
-      </div>
-    </div>
-
-    <!-- 연도 전환 모달 -->
-    <div id="modal-area"></div>
-
-    <!-- 컨트롤 -->
-    <div class="ctrl">
-      <div class="ctrl-left">5번째 칸에서 Enter → 자동 줄 추가</div>
-      <div class="ctrl-right">
-        <button class="btn-dist" onclick="addDistrict()">＋ 지구 추가</button>
-        <div class="dp-wrap" id="dpw">
-          <button class="btn-samt" onclick="toggleDp()">＋ 샘터 추가</button>
-          <div class="dp-box hidden" id="dpb">
-            <label>샘터 번호 입력</label>
-            <input type="text" id="si" placeholder="예) 14" maxlength="3"
-                   oninput="document.getElementById('dp-err').textContent=''"
-                   onkeydown="if(event.key==='Enter')doAddSamter()">
-            <div class="dp-hint">앞자리=지구, 뒷자리=순번<br>예) 14 → 1지구 4번째 샘터</div>
-            <div class="dp-err" id="dp-err"></div>
-            <div class="dp-btns">
-              <button class="db-cancel" onclick="closeDp()">취소</button>
-              <button class="db-ok" onclick="doAddSamter()">추가</button>
-            </div>
-          </div>
+        <div class="modal-btns">
+          <button class="mb-cancel" onclick="cancelModal()">취소</button>
+          <button class="mb-ok" id="mok" onclick="confirmModal()" disabled>확인</button>
         </div>
-        <button class="btn-save-ctrl" onclick="saveOrg()">전체 저장</button>
       </div>
-    </div>
+    </div>`;
+}
 
-    <div class="stat" id="stat"></div>
+function pickMode(m) {
+  selMode = m;
+  document.querySelectorAll('.modal-opt').forEach(b => b.classList.remove('sel'));
+  document.getElementById('opt-' + m).classList.add('sel');
+  document.getElementById('mok').disabled = false;
+}
 
-    <div class="two-col" id="two-col">
-      <div class="org-wrap" id="col-left">
-        <table><tbody id="tbody-left"></tbody></table>
+function cancelModal() {
+  document.getElementById('modal-area').innerHTML = '';
+  pendingYear = null; selMode = null;
+}
+
+function confirmModal() {
+  if (!selMode || !pendingYear) return;
+  const y    = pendingYear;
+  const prev = allData[currentYear] || [];
+  allData[y] = selMode === 'copy'
+    ? JSON.parse(JSON.stringify(prev))
+    : prev.map(d => ({
+        name: d.name,
+        samters: d.samters.map(s => ({ num: s.num, keeper: '', members: [] }))
+      }));
+  document.getElementById('modal-area').innerHTML = '';
+  pendingYear = null; selMode = null;
+  loadYear(y);
+  toast(y + '년 조직표를 시작합니다', 'ok');
+}
+
+// ================================================================
+//  연도 로드 / 저장
+// ================================================================
+function loadYear(y) {
+  currentYear = y;
+  document.getElementById('yd').textContent = y;
+  const raw = allData[y] || [];
+  state = raw.map((d, di) => ({
+    id: di + 1,
+    name: d.name,
+    samters: d.samters.map((s, si) => ({
+      id:     (di + 1) * 100 + si + 1,
+      num:    s.num,
+      keeper: s.keeper,
+      rows:   toRows(s.members),
+    })),
+  }));
+  render();
+}
+
+function saveCurrentToAllData() {
+  allData[currentYear] = state.map(d => ({
+    name:    d.name,
+    samters: d.samters.map(s => ({
+      num:     s.num,
+      keeper:  s.keeper,
+      members: s.rows.flat().filter(Boolean),
+    })),
+  }));
+}
+
+const SAVE_PASSWORD = '4241';  // 저장 전용 비밀번호
+
+function saveOrg() {
+  // 저장 비밀번호 확인 — 고정 오버레이 방식
+  let overlay = document.getElementById('save-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'save-overlay';
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:rgba(0,0,0,.45);' +
+      'display:flex;align-items:center;justify-content:center;z-index:9000;padding:20px';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:28px 24px 22px;
+                width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="font-family:'Nanum Myeongjo',serif;font-size:1rem;color:#1a2744;
+                  font-weight:800;margin-bottom:6px">저장 확인</div>
+      <div style="font-size:.75rem;color:#888;margin-bottom:16px;line-height:1.5">
+        ${currentYear}년 조직표를 저장합니다.<br>저장 비밀번호를 입력하세요.
       </div>
-      <div class="org-wrap" id="col-right">
-        <table><tbody id="tbody-right"></tbody></table>
+      <input type="password" id="save-pw" placeholder="저장 비밀번호"
+        style="width:100%;padding:11px 14px;border:2px solid #e0e0e0;border-radius:8px;
+               font-size:1.1rem;text-align:center;letter-spacing:.25em;outline:none;
+               margin-bottom:6px;font-family:inherit;transition:border-color .2s"
+        onfocus="this.style.borderColor='#1a2744'"
+        onblur="this.style.borderColor='#e0e0e0'"
+        onkeydown="if(event.key==='Enter')confirmSave();if(event.key==='Escape')closeSaveOverlay()">
+      <div id="save-pw-err"
+        style="font-size:.72rem;color:#c0392b;min-height:16px;text-align:center;margin-bottom:12px">
       </div>
-    </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="closeSaveOverlay()"
+          style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;
+                 background:#f0f0f0;color:#555;border:none;cursor:pointer">취소</button>
+        <button onclick="confirmSave()"
+          style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;
+                 background:#1a2744;color:#fff;border:none;cursor:pointer">저장</button>
+      </div>
+    </div>`;
+  overlay.style.display = 'flex';
+  setTimeout(() => document.getElementById('save-pw')?.focus(), 60);
+}
 
-  </main>
-</div>
+function closeSaveOverlay() {
+  const overlay = document.getElementById('save-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
 
-<!-- 토스트 -->
-<div id="toast"></div>
+function confirmSave() {
+  const pw    = (document.getElementById('save-pw')?.value || '').trim();
+  const errEl = document.getElementById('save-pw-err');
+  if (pw !== SAVE_PASSWORD) {
+    if (errEl) errEl.textContent = '비밀번호가 틀렸습니다.';
+    const inp = document.getElementById('save-pw');
+    if (inp) { inp.value = ''; inp.focus(); }
+    return;
+  }
+  closeSaveOverlay();
+  saveCurrentToAllData();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+    toast('저장 완료 ✓', 'ok');
+    apiCall({ action: 'saveOrg', year: currentYear, districts: allData[currentYear] })
+      .catch(() => {});
+  } catch (e) {
+    toast('저장 실패: ' + e.message, 'err');
+  }
+}
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="app.js"></script>
-</body>
-</html>
+// ================================================================
+//  지구 / 샘터 추가
+// ================================================================
+function addDistrict() {
+  const n = state.length + 1;
+  state.push({ id: Date.now(), name: n + '지구', samters: [] });
+  render();
+  toast(n + '지구 추가됨', 'ok');
+}
+
+function toggleDp() {
+  const b = document.getElementById('dpb');
+  b.classList.toggle('hidden');
+  if (!b.classList.contains('hidden')) {
+    document.getElementById('si').value = '';
+    document.getElementById('dp-err').textContent = '';
+    setTimeout(() => document.getElementById('si').focus(), 40);
+  }
+}
+
+function closeDp() { document.getElementById('dpb').classList.add('hidden'); }
+
+function doAddSamter() {
+  const val  = document.getElementById('si').value.trim();
+  const errEl = document.getElementById('dp-err');
+  if (!val || isNaN(Number(val))) { errEl.textContent = '숫자를 입력하세요 (예: 14)'; return; }
+
+  const dNum = parseInt(val[0]);
+  const sNum = val;
+  const dist = state.find(d => d.name === dNum + '지구');
+  if (!dist) { errEl.textContent = dNum + '지구가 없습니다.'; return; }
+  if (dist.samters.find(s => s.num === sNum)) { errEl.textContent = sNum + '샘터가 이미 있습니다.'; return; }
+
+  const ns  = { id: nextSid++, num: sNum, keeper: '', rows: [['','','','','','','','','','']] };
+  const idx = dist.samters.findIndex(s => parseInt(s.num) > parseInt(sNum));
+  if (idx === -1) dist.samters.push(ns); else dist.samters.splice(idx, 0, ns);
+
+  closeDp();
+  render();
+  toast(sNum + '샘터를 ' + dist.name + '에 추가했습니다', 'ok');
+}
+
+// ================================================================
+//  렌더링 — 단일 세로 배치, 한 행에 10칸 (10·20번째 Enter → 줄 추가)
+// ================================================================
+function render() {
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = '';
+
+  state.forEach((dist, di) => {
+    // 지구 사이 구분선
+    if (di > 0) {
+      const tr = document.createElement('tr'); tr.className = 'r-dist-sep';
+      const td = document.createElement('td'); td.colSpan = 3;
+      tr.appendChild(td); tb.appendChild(tr);
+    }
+
+    // 지구 헤더
+    const chief = dist.samters[0]?.keeper || '-';
+    const hdr = document.createElement('tr'); hdr.className = 'r-dh';
+    hdr.innerHTML = `
+      <td style="width:44px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">샘터</td>
+      <td style="width:94px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">청지기</td>
+      <td style="text-align:center">
+        <input value="${dist.name}"
+          style="background:transparent;border:none;color:#fff;font-weight:700;
+                 font-size:.8rem;padding:0;font-family:inherit;width:50px;text-align:center"
+          oninput="dist.name=this.value">
+        <span style="font-size:.72rem;opacity:.9">&nbsp;(지구장:&nbsp;<strong id="chief-${dist.id}">${chief}</strong>)</span>
+      </td>`;
+    tb.appendChild(hdr);
+
+    if (!dist.samters.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td'); td.colSpan = 3; td.className = 'empty-d';
+      td.textContent = '＋ 샘터 추가 버튼으로 샘터를 추가하세요';
+      tr.appendChild(td); tb.appendChild(tr);
+      return;
+    }
+
+    dist.samters.forEach((samter, si) => {
+      // 샘터 사이 구분선
+      if (si > 0) {
+        const sep = document.createElement('tr'); sep.className = 'r-sep';
+        const std = document.createElement('td'); std.colSpan = 3;
+        sep.appendChild(std); tb.appendChild(sep);
+      }
+
+      const memberCount = samter.rows.flat().filter(Boolean).length;
+      const rs = samter.rows.length;
+
+      samter.rows.forEach((row10, ri) => {
+        const tr = document.createElement('tr'); tr.className = 'r-s';
+
+        if (ri === 0) {
+          // 샘터 번호 칸
+          const tn = document.createElement('td'); tn.className = 'cn'; tn.rowSpan = rs;
+          tn.innerHTML = `<input value="${samter.num}" placeholder="번호"
+            style="width:100%;border:none;background:transparent;text-align:center;
+                   font-weight:700;font-size:.85rem;color:var(--navy);padding:4px 2px;outline:none"
+            oninput="samter.num=this.value">`;
+          tr.appendChild(tn);
+
+          // 청지기 + 인원수 칸
+          const tk = document.createElement('td'); tk.className = 'ck'; tk.rowSpan = rs;
+          const keeperInp = document.createElement('input');
+          keeperInp.value = samter.keeper;
+          keeperInp.placeholder = '청지기';
+          keeperInp.id = 'kp-' + samter.id;
+          keeperInp.style.cssText =
+            'width:100%;border:none;background:transparent;text-align:center;' +
+            'font-size:.74rem;padding:2px;display:block;outline:none;font-family:inherit';
+          keeperInp.addEventListener('input', function () {
+            samter.keeper = this.value;
+            if (si === 0) {
+              const chiefEl = document.getElementById('chief-' + dist.id);
+              if (chiefEl) chiefEl.textContent = this.value || '-';
+            }
+          });
+          const countDiv = document.createElement('div');
+          countDiv.className = 'ck-count';
+          countDiv.id = 'cc-' + samter.id;
+          countDiv.textContent = '(' + memberCount + '명)';
+          tk.appendChild(keeperInp);
+          tk.appendChild(countDiv);
+          tr.appendChild(tk);
+        }
+
+        // 멤버 10칸 그리드
+        const tm = document.createElement('td'); tm.className = 'cm';
+        const g  = document.createElement('div'); g.className = 'mg'; g.id = `g-${samter.id}-${ri}`;
+
+        row10.forEach((v, ci) => {
+          const c   = document.createElement('div'); c.className = 'mc';
+          const inp = document.createElement('input');
+          inp.value       = v;
+          inp.placeholder = (ri * 10 + ci + 1) + '번';
+
+          inp.addEventListener('input', function () {
+            row10[ci] = this.value;
+            const cnt  = samter.rows.flat().filter(Boolean).length;
+            const ccEl = document.getElementById('cc-' + samter.id);
+            if (ccEl) ccEl.textContent = '(' + cnt + '명)';
+            updateStat();
+          });
+
+          inp.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (ci < 9) {
+              // 같은 행 다음 칸
+              g.querySelectorAll('input')[ci + 1]?.focus();
+            } else {
+              // 10번째 칸 → 다음 행 (없으면 새 행 추가)
+              const nri = ri + 1;
+              if (nri >= samter.rows.length) {
+                samter.rows.push(['','','','','','','','','','']);
+                render();
+                setTimeout(() => {
+                  document.getElementById(`g-${samter.id}-${nri}`)
+                    ?.querySelectorAll('input')[0]?.focus();
+                }, 20);
+              } else {
+                document.getElementById(`g-${samter.id}-${nri}`)
+                  ?.querySelectorAll('input')[0]?.focus();
+              }
+            }
+          });
+
+          c.appendChild(inp); g.appendChild(c);
+        });
+
+        tm.appendChild(g); tr.appendChild(tm); tb.appendChild(tr);
+      });
+    });
+  });
+
+  updateStat();
+}
+
+function updateStat() {
+  const d = state.length;
+  const s = state.reduce((a, ds) => a + ds.samters.length, 0);
+  const m = state.reduce((a, ds) =>
+    a + ds.samters.reduce((b, sm) =>
+      b + sm.rows.flat().filter(Boolean).length, 0), 0);
+  document.getElementById('stat').textContent =
+    currentYear + '년 · ' + d + '지구 · ' + s + '샘터 · 총 ' + m + '명';
+}
+
+// ================================================================
+//  엑셀 내보내기
+// ================================================================
+function doExport() {
+  try {
+    saveCurrentToAllData();
+    const wb   = XLSX.utils.book_new();
+    const rows = [['지구', '샘터', '청지기', '조원']];
+
+    state.forEach(d => {
+      d.samters.forEach(s => {
+        const members = s.rows.flat().filter(Boolean);
+        if (!members.length) {
+          rows.push([d.name, s.num + '샘터', s.keeper, '']);
+        } else {
+          members.forEach(m => rows.push([d.name, s.num + '샘터', s.keeper, m]));
+        }
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 18 }, { wch: 18 }];
+
+    // 헤더 굵게
+    for (let c = 0; c < 4; c++) {
+      const cell = XLSX.utils.encode_cell({ r: 0, c });
+      if (ws[cell]) ws[cell].s = { font: { bold: true } };
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, currentYear + '년 조직표');
+    XLSX.writeFile(wb, currentYear + '_시카고언약_샘터조직표.xlsx');
+    toast('엑셀 다운로드 완료', 'ok');
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+// ================================================================
+//  유틸
+// ================================================================
+function toRows(members) {
+  const a = members || [];
+  const r = [];
+  for (let i = 0; i < Math.max(a.length, 1); i += 10)
+    r.push([
+      a[i]||'', a[i+1]||'', a[i+2]||'', a[i+3]||'', a[i+4]||'',
+      a[i+5]||'', a[i+6]||'', a[i+7]||'', a[i+8]||'', a[i+9]||'',
+    ]);
+  if (!r.length) r.push(['','','','','','','','','','']);
+  return r;
+}
+
+let _toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = type === 'ok' ? '✓ ' + msg : '✕ ' + msg;
+  el.className   = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// 외부 클릭으로 패널 닫기
+document.addEventListener('click', function (e) {
+  if (!document.getElementById('yw')?.contains(e.target))  closeYP();
+  if (!document.getElementById('dpw')?.contains(e.target)) closeDp();
+});
+
+// ESC 키
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { closeYP(); closeDp(); cancelModal(); closeSaveOverlay(); }
+});
