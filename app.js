@@ -421,7 +421,7 @@ function render() {
         sep.appendChild(std); tb.appendChild(sep);
       }
 
-      const memberCount = samter.rows.flat().filter(Boolean).length;
+      const memberCount = samter.rows.flat().filter(Boolean).length + (samter.keeper ? 1 : 0);
       const rs = samter.rows.length;
 
       samter.rows.forEach((row10, ri) => {
@@ -455,6 +455,10 @@ function render() {
               const chiefEl = document.getElementById('chief-' + dist.id);
               if (chiefEl) chiefEl.textContent = this.value || '-';
             }
+            // 청지기 포함 인원수 갱신
+            const cnt  = samter.rows.flat().filter(Boolean).length + (this.value ? 1 : 0);
+            const ccEl = document.getElementById('cc-' + samter.id);
+            if (ccEl) ccEl.textContent = '(' + cnt + '명)';
           });
           const countDiv = document.createElement('div');
           countDiv.className = 'ck-count';
@@ -477,7 +481,7 @@ function render() {
 
           inp.addEventListener('input', function () {
             row10[ci] = this.value;
-            const cnt  = samter.rows.flat().filter(Boolean).length;
+            const cnt  = samter.rows.flat().filter(Boolean).length + (samter.keeper ? 1 : 0);
             const ccEl = document.getElementById('cc-' + samter.id);
             if (ccEl) ccEl.textContent = '(' + cnt + '명)';
             updateStat();
@@ -522,7 +526,7 @@ function updateStat() {
   const s = state.reduce((a, ds) => a + ds.samters.length, 0);
   const m = state.reduce((a, ds) =>
     a + ds.samters.reduce((b, sm) =>
-      b + sm.rows.flat().filter(Boolean).length, 0), 0);
+      b + sm.rows.flat().filter(Boolean).length + (sm.keeper ? 1 : 0), 0), 0);
   document.getElementById('stat').textContent =
     currentYear + '년 · ' + d + '지구 · ' + s + '샘터 · 총 ' + m + '명';
 }
