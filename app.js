@@ -614,3 +614,444 @@ document.addEventListener('click', function (e) {
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') { closeYP(); closeDp(); cancelModal(); closeSaveOverlay(); }
 });
+
+// ================================================================
+//  자료제공 — 월 샘터보고서 / 년중 샘터출석 상황
+//  출석 데이터 저장: attendanceData[year][samterNum][month][memberName] = 'O'|'X'|''
+// ================================================================
+
+const ATT_KEY = 'samter_attendance';
+let attData = {};   // { '2026': { '22': { '1': { '윤자명': 'O', ... }, ... } } }
+
+// 출석 데이터 로드
+function loadAttData() {
+  try {
+    const s = localStorage.getItem(ATT_KEY);
+    if (s) attData = JSON.parse(s);
+  } catch(e) {}
+}
+loadAttData();
+
+function saveAttData() {
+  try { localStorage.setItem(ATT_KEY, JSON.stringify(attData)); } catch(e) {}
+}
+
+// ── doExport 라우터 확장 ──────────────────────────────────────────
+const _origDoExport = doExport;
+// 기존 doExport 재정의
+window.doExport = function(type) {
+  closeExport();
+  if (type === 'xlsx')    return exportExcel();
+  if (type === 'monthly') return openMonthlyModal();
+  if (type === 'yearly')  return openYearlyModal();
+};
+// 기존 함수도 동일하게
+function doExport(type) {
+  closeExport();
+  if (type === 'xlsx')    return exportExcel();
+  if (type === 'monthly') return openMonthlyModal();
+  if (type === 'yearly')  return openYearlyModal();
+}
+
+// ── 모달 공통 오버레이 ────────────────────────────────────────────
+function openFullModal(html) {
+  let ov = document.getElementById('full-modal');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'full-modal';
+    ov.style.cssText =
+      'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;' +
+      'overflow-y:auto;padding:20px;display:flex;justify-content:center;align-items:flex-start';
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = html;
+  ov.style.display = 'flex';
+}
+function closeFullModal() {
+  const ov = document.getElementById('full-modal');
+  if (ov) ov.style.display = 'none';
+}
+
+// ── 샘터 선택 헬퍼 ───────────────────────────────────────────────
+function buildSamterOptions() {
+  let opts = '<option value="">-- 샘터 선택 --</option>';
+  state.forEach(dist => {
+    dist.samters.forEach(s => {
+      opts += `<option value="${s.num}">${s.num}샘터 (${s.keeper})</option>`;
+    });
+  });
+  return opts;
+}
+
+function getSamterByNum(num) {
+  for (const dist of state) {
+    const s = dist.samters.find(s => s.num === String(num));
+    if (s) return s;
+  }
+  return null;
+}
+
+function getDistrictChief(samterNum) {
+  for (const dist of state) {
+    if (dist.samters.find(s => s.num === String(samterNum))) {
+      return dist.samters[0]?.keeper || '-';
+    }
+  }
+  return '-';
+}
+
+function getMemberList(samterNum) {
+  const s = getSamterByNum(samterNum);
+  if (!s) return [];
+  const members = s.rows.flat().filter(Boolean);
+  // 청지기를 맨 앞에
+  if (s.keeper && !members.includes(s.keeper)) return [s.keeper, ...members];
+  return members;
+}
+
+// ================================================================
+//  월 샘터 보고서
+// ================================================================
+function openMonthlyModal() {
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const mOpts  = months.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+  const samOpts = buildSamterOptions();
+  const now = new Date();
+
+  openFullModal(`
+    <div style="background:#fff;border-radius:12px;width:100%;max-width:760px;
+                padding:28px 24px 24px;position:relative;margin:auto">
+      <button onclick="closeFullModal()"
+        style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;
+               border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>
+
+      <h2 style="font-family:'Nanum Myeongjo',serif;font-size:1.05rem;color:#1a2744;
+                 font-weight:800;margin-bottom:16px">📋 월 샘터 보고서</h2>
+
+      <!-- 상단 선택 -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <select id="mr-samter" onchange="renderMonthlyForm()"
+          style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">
+          ${samOpts}
+        </select>
+        <select id="mr-month" onchange="renderMonthlyForm()"
+          style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">
+          ${mOpts}
+        </select>
+        <input id="mr-date" type="text" placeholder="모임일시 (예: 02/08/26)"
+          style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:130px;font-family:inherit">
+        <input id="mr-place" type="text" placeholder="모임장소 (예: 203)"
+          style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:100px;font-family:inherit">
+      </div>
+
+      <div id="monthly-form-body"></div>
+
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        <button onclick="saveMonthlyData()"
+          style="padding:9px 20px;background:#2d6a4f;color:#fff;border:none;border-radius:7px;
+                 font-size:.82rem;font-weight:600;cursor:pointer">💾 저장</button>
+        <button onclick="printMonthlyReport()"
+          style="padding:9px 20px;background:#1a2744;color:#fff;border:none;border-radius:7px;
+                 font-size:.82rem;font-weight:600;cursor:pointer">🖨 인쇄</button>
+        <button onclick="closeFullModal()"
+          style="padding:9px 16px;background:#f0f0f0;color:#555;border:none;border-radius:7px;
+                 font-size:.82rem;cursor:pointer">닫기</button>
+      </div>
+    </div>`);
+
+  // 현재월 기본 선택
+  document.getElementById('mr-month').value = now.getMonth() + 1;
+  renderMonthlyForm();
+}
+
+function renderMonthlyForm() {
+  const samterNum = document.getElementById('mr-samter').value;
+  const month     = document.getElementById('mr-month').value;
+  const body      = document.getElementById('monthly-form-body');
+  if (!samterNum || !body) return;
+
+  const members = getMemberList(samterNum);
+  const samter  = getSamterByNum(samterNum);
+  if (!members.length) { body.innerHTML = '<p style="color:#888;font-size:.82rem">조원이 없습니다.</p>'; return; }
+
+  // 저장된 출석 데이터 불러오기
+  const saved = attData[currentYear]?.[samterNum]?.[month] || {};
+
+  // 출석 인원 계산
+  const attCount = members.filter(m => (saved[m] || '') === 'O').length;
+  const total    = members.length;
+
+  let rows1 = '', rows2 = '';
+  const half = Math.ceil(members.length / 2);
+  members.forEach((name, idx) => {
+    const val = saved[name] || '';
+    const cell = `
+      <td style="border:1px solid #ccc;padding:4px 6px;text-align:center;font-size:.78rem">${idx+1}</td>
+      <td style="border:1px solid #ccc;padding:4px 8px;font-size:.78rem;min-width:80px">${name}</td>
+      <td style="border:1px solid #ccc;padding:4px;text-align:center">
+        <select data-member="${name}" class="att-sel"
+          style="border:1px solid #ddd;border-radius:3px;font-size:.75rem;padding:1px 2px;width:44px">
+          <option value=""  ${val===''  ?'selected':''}>  </option>
+          <option value="O" ${val==='O' ?'selected':''}>O</option>
+          <option value="X" ${val==='X' ?'selected':''}>X</option>
+        </select>
+      </td>
+      <td style="border:1px solid #ccc;padding:4px 6px;font-size:.75rem;min-width:80px">
+        <input type="text" data-reason="${name}" class="att-reason"
+          value="${saved[name+'_reason']||''}" placeholder="결석사유"
+          style="border:none;width:100%;font-size:.75rem;font-family:inherit;outline:none">
+      </td>`;
+    if (idx < half) rows1 += `<tr>${cell}</tr>`;
+    else            rows2 += `<tr>${cell}</tr>`;
+  });
+
+  body.innerHTML = `
+    <div style="border:1.5px solid #1a2744;border-radius:4px;overflow:hidden;margin-bottom:10px">
+      <!-- 헤더 정보 -->
+      <table style="width:100%;border-collapse:collapse;background:#e8edf7">
+        <tr style="font-size:.77rem;font-weight:700;color:#1a2744">
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">샘터</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0;font-weight:800">${samterNum}</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">청지기</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">${samter?.keeper||''}</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">지구장</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">${getDistrictChief(samterNum)}</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">총원</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">${total}명</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">참석</td>
+          <td id="att-count-cell" style="padding:6px 10px;border:1px solid #b8c8e0;font-weight:700;color:#2d6a4f">${attCount}명</td>
+          <td style="padding:6px 10px;border:1px solid #b8c8e0">출석률</td>
+          <td id="att-rate-cell" style="padding:6px 10px;border:1px solid #b8c8e0;font-weight:700;color:#3a5a8c">${total>0?Math.round(attCount/total*100):0}%</td>
+        </tr>
+      </table>
+      <!-- 명단 2열 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#3a5a8c;color:#fff;font-size:.73rem">
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2);width:28px">번호</th>
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2)">성명</th>
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2);width:48px">출/결</th>
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2)">결석사유</th>
+          </tr></thead>
+          <tbody>${rows1}</tbody>
+        </table>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#3a5a8c;color:#fff;font-size:.73rem">
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2);width:28px">번호</th>
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2)">성명</th>
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2);width:48px">출/결</th>
+            <th style="padding:5px;border:1px solid rgba(255,255,255,.2)">결석사유</th>
+          </tr></thead>
+          <tbody>${rows2}</tbody>
+        </table>
+      </div>
+      <!-- 새교우 / 보고 / 건의 -->
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="border:1px solid #ccc;padding:5px 8px;background:#f0f3f8;font-size:.75rem;font-weight:600;width:70px">새교우</td>
+            <td style="border:1px solid #ccc;padding:5px 8px;font-size:.75rem" colspan="3">
+              <input id="mr-new" type="text" style="border:none;width:100%;font-family:inherit;font-size:.75rem;outline:none" value="${saved['_new']||''}"></td></tr>
+        <tr><td style="border:1px solid #ccc;padding:5px 8px;background:#f0f3f8;font-size:.75rem;font-weight:600">보고사항</td>
+            <td style="border:1px solid #ccc;padding:5px 8px;font-size:.75rem" colspan="3">
+              <input id="mr-report" type="text" style="border:none;width:100%;font-family:inherit;font-size:.75rem;outline:none" value="${saved['_report']||''}"></td></tr>
+        <tr><td style="border:1px solid #ccc;padding:5px 8px;background:#f0f3f8;font-size:.75rem;font-weight:600">건의사항</td>
+            <td style="border:1px solid #ccc;padding:5px 8px;font-size:.75rem" colspan="3">
+              <input id="mr-suggest" type="text" style="border:none;width:100%;font-family:inherit;font-size:.75rem;outline:none" value="${saved['_suggest']||''}"></td></tr>
+      </table>
+    </div>`;
+
+  // 출석 변경 시 카운트 + 출석률 업데이트
+  body.querySelectorAll('.att-sel').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const cnt  = [...body.querySelectorAll('.att-sel')].filter(s => s.value === 'O').length;
+      const tot  = body.querySelectorAll('.att-sel').length;
+      const rate = tot > 0 ? Math.round(cnt / tot * 100) : 0;
+      const cEl  = document.getElementById('att-count-cell');
+      const rEl  = document.getElementById('att-rate-cell');
+      if (cEl) cEl.textContent = cnt + '명';
+      if (rEl) rEl.textContent = rate + '%';
+    });
+  });
+}
+
+function saveMonthlyData() {
+  const samterNum = document.getElementById('mr-samter')?.value;
+  const month     = document.getElementById('mr-month')?.value;
+  if (!samterNum || !month) { toast('샘터와 월을 선택하세요', 'err'); return; }
+
+  if (!attData[currentYear]) attData[currentYear] = {};
+  if (!attData[currentYear][samterNum]) attData[currentYear][samterNum] = {};
+  const rec = {};
+
+  document.querySelectorAll('.att-sel').forEach(sel => {
+    rec[sel.dataset.member] = sel.value;
+  });
+  document.querySelectorAll('.att-reason').forEach(inp => {
+    if (inp.value) rec[inp.dataset.reason + '_reason'] = inp.value;
+  });
+  rec['_new']     = document.getElementById('mr-new')?.value || '';
+  rec['_report']  = document.getElementById('mr-report')?.value || '';
+  rec['_suggest'] = document.getElementById('mr-suggest')?.value || '';
+
+  attData[currentYear][samterNum][month] = rec;
+  saveAttData();
+  toast(samterNum + '샘터 ' + month + '월 보고서 저장 완료', 'ok');
+  renderMonthlyForm(); // 카운트 갱신
+}
+
+function printMonthlyReport() {
+  saveMonthlyData();
+  const body = document.getElementById('monthly-form-body');
+  if (!body) return;
+  const samterNum = document.getElementById('mr-samter').value;
+  const month     = document.getElementById('mr-month').value;
+  const date      = document.getElementById('mr-date').value;
+  const place     = document.getElementById('mr-place').value;
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+    <title>${samterNum}샘터 ${month}월 보고서</title>
+    <style>
+      body{font-family:'Noto Sans KR',sans-serif;padding:20px;font-size:12px}
+      h2{font-family:'Nanum Myeongjo',serif;color:#1a2744;margin-bottom:10px}
+      table{width:100%;border-collapse:collapse}
+      td,th{border:1px solid #aaa;padding:4px 6px}
+      select,input{font-size:11px}
+      @media print{button{display:none}}
+    </style>
+    </head><body>
+    <h2>2026년 시카고 언약장로교회 말씀의 샘터부 보고서</h2>
+    <p style="font-size:11px;color:#888;margin-bottom:8px">
+      모임일시: ${date || '　　'} &nbsp; 모임장소: ${place || '　　'}
+    </p>
+    ${body.innerHTML}
+    <p style="font-size:10px;color:#888;margin-top:12px">
+      보고서 제출은 본당 예배실 Lobby 책장위에 있는 각 지구함에 넣어 주세요.
+    </p>
+    <script>window.onload=function(){window.print();}<\/script>
+    </body></html>`);
+  win.document.close();
+}
+
+// ================================================================
+//  년중 샘터 출석 상황
+// ================================================================
+function openYearlyModal() {
+  const samOpts = buildSamterOptions();
+  const months  = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+  openFullModal(`
+    <div style="background:#fff;border-radius:12px;width:100%;max-width:900px;
+                padding:28px 24px 24px;position:relative;margin:auto">
+      <button onclick="closeFullModal()"
+        style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;
+               border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>
+
+      <h2 style="font-family:'Nanum Myeongjo',serif;font-size:1.05rem;color:#1a2744;
+                 font-weight:800;margin-bottom:16px">📅 년중 샘터 출석 상황 (${currentYear}년)</h2>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <select id="yr-samter" onchange="renderYearlyTable()"
+          style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">
+          ${samOpts}
+        </select>
+        <button onclick="printYearlyReport()"
+          style="padding:8px 18px;background:#1a2744;color:#fff;border:none;border-radius:6px;
+                 font-size:.8rem;font-weight:600;cursor:pointer">🖨 인쇄</button>
+        <button onclick="closeFullModal()"
+          style="padding:8px 14px;background:#f0f0f0;color:#555;border:none;border-radius:6px;
+                 font-size:.8rem;cursor:pointer">닫기</button>
+      </div>
+
+      <div id="yearly-table-body" style="overflow-x:auto"></div>
+    </div>`);
+
+  renderYearlyTable();
+}
+
+function renderYearlyTable() {
+  const samterNum = document.getElementById('yr-samter')?.value;
+  const body      = document.getElementById('yearly-table-body');
+  if (!samterNum || !body) return;
+
+  const members = getMemberList(samterNum);
+  const samter  = getSamterByNum(samterNum);
+  const months  = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const mLabels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+  // 헤더
+  let html = `
+    <table style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:700px">
+      <thead>
+        <tr style="background:#1a2744;color:#fff">
+          <th style="padding:7px 8px;border:1px solid rgba(255,255,255,.2);text-align:left;min-width:30px">번호</th>
+          <th style="padding:7px 8px;border:1px solid rgba(255,255,255,.2);text-align:left;min-width:90px">성명</th>`;
+  months.forEach((m, i) => {
+    html += `<th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:40px">${mLabels[i]}</th>`;
+  });
+  html += `<th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:44px">출석수</th>
+           <th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:44px">출석률</th>
+        </tr>
+      </thead><tbody>`;
+
+  // 데이터 행 — 월별 미보고면 빈칸, 결석 X, 출석 O
+  members.forEach((name, idx) => {
+    let attCount = 0, reportedMonths = 0;
+    let cells = '';
+    months.forEach(m => {
+      const rec = attData[currentYear]?.[samterNum]?.[m];
+      if (!rec) { cells += `<td style="border:1px solid #ddd;text-align:center;color:#ccc">-</td>`; return; }
+      reportedMonths++;
+      const v = rec[name] || '';
+      if (v === 'O') attCount++;
+      const color = v==='O'?'#2d6a4f':v==='X'?'#c0392b':'#888';
+      cells += `<td style="border:1px solid #ddd;text-align:center;color:${color};font-weight:${v?'700':'400'}">${v||'·'}</td>`;
+    });
+    const rate = reportedMonths > 0 ? Math.round(attCount / reportedMonths * 100) : 0;
+    const rateColor = rate >= 80 ? '#2d6a4f' : rate >= 50 ? '#856404' : '#c0392b';
+    html += `<tr style="background:${idx%2===0?'#fff':'#f9fafc'}">
+      <td style="border:1px solid #ddd;padding:5px 6px;text-align:center">${idx+1}</td>
+      <td style="border:1px solid #ddd;padding:5px 8px">${name}</td>
+      ${cells}
+      <td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:#1a2744">${attCount}</td>
+      <td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:${rateColor}">${reportedMonths?rate+'%':'-'}</td>
+    </tr>`;
+  });
+
+  // 월별 참석 합계 행
+  html += `<tr style="background:#e8edf7;font-weight:700">
+    <td style="border:1px solid #ddd;padding:5px 6px;text-align:center" colspan="2">월별 참석수</td>`;
+  months.forEach(m => {
+    const rec = attData[currentYear]?.[samterNum]?.[m];
+    if (!rec) { html += `<td style="border:1px solid #ddd;text-align:center;color:#bbb">-</td>`; return; }
+    const cnt = members.filter(n => rec[n] === 'O').length;
+    html += `<td style="border:1px solid #ddd;text-align:center;color:#1a2744">${cnt}</td>`;
+  });
+  html += `<td style="border:1px solid #ddd" colspan="2"></td></tr>`;
+  html += '</tbody></table>';
+
+  body.innerHTML = html;
+}
+
+function printYearlyReport() {
+  const samterNum = document.getElementById('yr-samter')?.value;
+  const body      = document.getElementById('yearly-table-body');
+  if (!body) return;
+  const samter = getSamterByNum(samterNum);
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+    <title>${samterNum}샘터 년중 출석상황</title>
+    <style>
+      body{font-family:'Noto Sans KR',sans-serif;padding:16px;font-size:11px}
+      h2{font-family:'Nanum Myeongjo',serif;color:#1a2744;margin-bottom:8px;font-size:14px}
+      table{width:100%;border-collapse:collapse}
+      td,th{border:1px solid #aaa;padding:3px 5px}
+      @media print{button{display:none}}
+    </style></head><body>
+    <h2>${currentYear}년 시카고 언약장로교회 ${samterNum}샘터 년중 출석 상황</h2>
+    <p style="font-size:10px;color:#888;margin-bottom:8px">청지기: ${samter?.keeper||''}</p>
+    ${body.innerHTML}
+    <script>window.onload=function(){window.print();}<\/script>
+    </body></html>`);
+  win.document.close();
+}
