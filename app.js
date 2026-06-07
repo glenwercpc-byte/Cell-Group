@@ -328,7 +328,7 @@ function doAddSamter() {
   if (!dist) { errEl.textContent = dNum + '지구가 없습니다.'; return; }
   if (dist.samters.find(s => s.num === sNum)) { errEl.textContent = sNum + '샘터가 이미 있습니다.'; return; }
 
-  const ns  = { id: nextSid++, num: sNum, keeper: '', rows: [['','','','','']] };
+  const ns  = { id: nextSid++, num: sNum, keeper: '', rows: [['','','','','','','','','','']] };
   const idx = dist.samters.findIndex(s => parseInt(s.num) > parseInt(sNum));
   if (idx === -1) dist.samters.push(ns); else dist.samters.splice(idx, 0, ns);
 
@@ -338,21 +338,15 @@ function doAddSamter() {
 }
 
 // ================================================================
-//  렌더링 — 1·2지구 왼쪽, 3·4지구 오른쪽 2열 배치
+//  렌더링 — 단일 세로 배치, 한 행에 10칸 (10·20번째 Enter → 줄 추가)
 // ================================================================
 function render() {
-  const tbLeft  = document.getElementById('tbody-left');
-  const tbRight = document.getElementById('tbody-right');
-  tbLeft.innerHTML = '';
-  tbRight.innerHTML = '';
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = '';
 
-  // 지구 인덱스 0,1 → 왼쪽 / 2,3 → 오른쪽
   state.forEach((dist, di) => {
-    const tb = di < 2 ? tbLeft : tbRight;
-    const localDi = di % 2;  // 같은 tbody 안에서의 순서
-
-    // 지구 사이 구분선 (같은 열 내 두 번째 지구부터)
-    if (localDi > 0) {
+    // 지구 사이 구분선
+    if (di > 0) {
       const tr = document.createElement('tr'); tr.className = 'r-dist-sep';
       const td = document.createElement('td'); td.colSpan = 3;
       tr.appendChild(td); tb.appendChild(tr);
@@ -362,14 +356,14 @@ function render() {
     const chief = dist.samters[0]?.keeper || '-';
     const hdr = document.createElement('tr'); hdr.className = 'r-dh';
     hdr.innerHTML = `
-      <td style="width:34px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">샘터</td>
-      <td style="width:72px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">청지기</td>
-      <td style="text-align:center;font-size:.68rem">
+      <td style="width:44px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">샘터</td>
+      <td style="width:94px;text-align:center;border-right:2px solid rgba(255,255,255,.28)">청지기</td>
+      <td style="text-align:center">
         <input value="${dist.name}"
           style="background:transparent;border:none;color:#fff;font-weight:700;
-                 font-size:.72rem;padding:0;font-family:inherit;width:46px;text-align:center"
+                 font-size:.8rem;padding:0;font-family:inherit;width:50px;text-align:center"
           oninput="dist.name=this.value">
-        <span style="opacity:.88">&nbsp;(지구장:&nbsp;<strong id="chief-${dist.id}">${chief}</strong>)</span>
+        <span style="font-size:.72rem;opacity:.9">&nbsp;(지구장:&nbsp;<strong id="chief-${dist.id}">${chief}</strong>)</span>
       </td>`;
     tb.appendChild(hdr);
 
@@ -392,7 +386,7 @@ function render() {
       const memberCount = samter.rows.flat().filter(Boolean).length;
       const rs = samter.rows.length;
 
-      samter.rows.forEach((row5, ri) => {
+      samter.rows.forEach((row10, ri) => {
         const tr = document.createElement('tr'); tr.className = 'r-s';
 
         if (ri === 0) {
@@ -400,7 +394,7 @@ function render() {
           const tn = document.createElement('td'); tn.className = 'cn'; tn.rowSpan = rs;
           tn.innerHTML = `<input value="${samter.num}" placeholder="번호"
             style="width:100%;border:none;background:transparent;text-align:center;
-                   font-weight:700;font-size:.75rem;color:var(--navy);padding:3px 1px;outline:none"
+                   font-weight:700;font-size:.85rem;color:var(--navy);padding:4px 2px;outline:none"
             oninput="samter.num=this.value">`;
           tr.appendChild(tn);
 
@@ -412,7 +406,7 @@ function render() {
           keeperInp.id = 'kp-' + samter.id;
           keeperInp.style.cssText =
             'width:100%;border:none;background:transparent;text-align:center;' +
-            'font-size:.66rem;padding:2px;display:block;outline:none;font-family:inherit';
+            'font-size:.74rem;padding:2px;display:block;outline:none;font-family:inherit';
           keeperInp.addEventListener('input', function () {
             samter.keeper = this.value;
             if (si === 0) {
@@ -429,18 +423,18 @@ function render() {
           tr.appendChild(tk);
         }
 
-        // 멤버 5칸 그리드
+        // 멤버 10칸 그리드
         const tm = document.createElement('td'); tm.className = 'cm';
         const g  = document.createElement('div'); g.className = 'mg'; g.id = `g-${samter.id}-${ri}`;
 
-        row5.forEach((v, ci) => {
+        row10.forEach((v, ci) => {
           const c   = document.createElement('div'); c.className = 'mc';
           const inp = document.createElement('input');
           inp.value       = v;
-          inp.placeholder = (ri * 5 + ci + 1) + '번';
+          inp.placeholder = (ri * 10 + ci + 1) + '번';
 
           inp.addEventListener('input', function () {
-            row5[ci] = this.value;
+            row10[ci] = this.value;
             const cnt  = samter.rows.flat().filter(Boolean).length;
             const ccEl = document.getElementById('cc-' + samter.id);
             if (ccEl) ccEl.textContent = '(' + cnt + '명)';
@@ -450,12 +444,14 @@ function render() {
           inp.addEventListener('keydown', function (e) {
             if (e.key !== 'Enter') return;
             e.preventDefault();
-            if (ci < 4) {
+            if (ci < 9) {
+              // 같은 행 다음 칸
               g.querySelectorAll('input')[ci + 1]?.focus();
             } else {
+              // 10번째 칸 → 다음 행 (없으면 새 행 추가)
               const nri = ri + 1;
               if (nri >= samter.rows.length) {
-                samter.rows.push(['', '', '', '', '']);
+                samter.rows.push(['','','','','','','','','','']);
                 render();
                 setTimeout(() => {
                   document.getElementById(`g-${samter.id}-${nri}`)
@@ -532,9 +528,12 @@ function doExport() {
 function toRows(members) {
   const a = members || [];
   const r = [];
-  for (let i = 0; i < Math.max(a.length, 1); i += 5)
-    r.push([a[i]||'', a[i+1]||'', a[i+2]||'', a[i+3]||'', a[i+4]||'']);
-  if (!r.length) r.push(['', '', '', '', '']);
+  for (let i = 0; i < Math.max(a.length, 1); i += 10)
+    r.push([
+      a[i]||'', a[i+1]||'', a[i+2]||'', a[i+3]||'', a[i+4]||'',
+      a[i+5]||'', a[i+6]||'', a[i+7]||'', a[i+8]||'', a[i+9]||'',
+    ]);
+  if (!r.length) r.push(['','','','','','','','','','']);
   return r;
 }
 
