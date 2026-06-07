@@ -352,8 +352,14 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
         <div class="export-wrap" id="expw">
           <button class="btn-export" onclick="toggleExport()">자료제공 ▾</button>
           <div class="export-box hidden" id="expb">
-            <div class="export-item" onclick="doExport('xlsx')">
-              <span class="ei-icon">📊</span> 엑셀(.xlsx)
+            <div class="export-item" onclick="doExport('gdocs')">
+              <span class="ei-icon">📄</span> 구글 독스로 출력
+            </div>
+            <div class="export-item" onclick="doExport('monthly')">
+              <span class="ei-icon">📋</span> 월 샘터보고서
+            </div>
+            <div class="export-item" onclick="doExport('yearly')">
+              <span class="ei-icon">📅</span> 년중 출석 상황
             </div>
           </div>
         </div>
