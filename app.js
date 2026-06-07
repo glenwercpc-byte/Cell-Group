@@ -641,16 +641,147 @@ const _origDoExport = doExport;
 // 기존 doExport 재정의
 window.doExport = function(type) {
   closeExport();
-  if (type === 'xlsx')    return exportExcel();
+  if (type === 'gdocs')   return exportToGoogleDocs();
   if (type === 'monthly') return openMonthlyModal();
   if (type === 'yearly')  return openYearlyModal();
 };
 // 기존 함수도 동일하게
 function doExport(type) {
   closeExport();
-  if (type === 'xlsx')    return exportExcel();
+  if (type === 'gdocs')   return exportToGoogleDocs();
   if (type === 'monthly') return openMonthlyModal();
   if (type === 'yearly')  return openYearlyModal();
+}
+
+// ── 구글 독스로 출력 ──────────────────────────────────────────────
+// 조직표 HTML을 새 창에 열어 Google Docs로 복사할 수 있게 함
+function exportToGoogleDocs() {
+  saveCurrentToAllData();
+
+  // 조직표 HTML 생성
+  let tableRows = '';
+  state.forEach((dist, di) => {
+    // 지구 헤더
+    const chief = dist.samters[0]?.keeper || '-';
+    tableRows += `
+      <tr style="background:#3a5a8c;color:#fff">
+        <td style="padding:6px 10px;font-weight:700;text-align:center;border:1px solid #2a4a7c">샘터</td>
+        <td style="padding:6px 10px;font-weight:700;text-align:center;border:1px solid #2a4a7c">청지기</td>
+        <td colspan="10" style="padding:6px 14px;font-weight:700;border:1px solid #2a4a7c">
+          ${dist.name}&nbsp;&nbsp;<span style="font-weight:400;font-size:.9em">(지구장: ${chief})</span>
+        </td>
+      </tr>`;
+
+    dist.samters.forEach((samter, si) => {
+      const members = samter.rows.flat().filter(Boolean);
+      const count   = members.length + (samter.keeper ? 1 : 0);
+      // 10명씩 한 행
+      const allMembers = samter.keeper
+        ? [samter.keeper, ...members]
+        : members;
+
+      for (let r = 0; r < Math.max(allMembers.length, 1); r += 10) {
+        const isFirst = r === 0;
+        const chunk   = allMembers.slice(r, r + 10);
+        // 10칸 채우기
+        while (chunk.length < 10) chunk.push('');
+
+        tableRows += `<tr style="${si > 0 && isFirst ? 'border-top:2px solid #3a5a8c' : ''}">`;
+        if (isFirst) {
+          tableRows += `
+            <td rowspan="${Math.ceil(Math.max(allMembers.length,1)/10)}"
+              style="border:1px solid #ccc;padding:4px 6px;text-align:center;
+                     font-weight:700;font-size:.9em;background:#e8eef7;vertical-align:middle">
+              ${samter.num}
+            </td>
+            <td rowspan="${Math.ceil(Math.max(allMembers.length,1)/10)}"
+              style="border:1px solid #ccc;padding:4px 6px;text-align:center;
+                     font-size:.82em;background:#f2f5fa;vertical-align:middle">
+              ${samter.keeper}<br><span style="font-size:.85em;color:#3a5a8c">(${count}명)</span>
+            </td>`;
+        }
+        chunk.forEach(name => {
+          tableRows += `<td style="border:1px solid #ddd;padding:4px 6px;font-size:.85em;min-width:60px">${name}</td>`;
+        });
+        tableRows += '</tr>';
+      }
+    });
+
+    // 지구 사이 간격
+    if (di < state.length - 1) {
+      tableRows += `<tr><td colspan="12" style="height:8px;background:#f5f3ee;border:none"></td></tr>`;
+    }
+  });
+
+  const totalMembers = state.reduce((a, d) =>
+    a + d.samters.reduce((b, s) =>
+      b + s.rows.flat().filter(Boolean).length + (s.keeper ? 1 : 0), 0), 0);
+  const totalSamters = state.reduce((a, d) => a + d.samters.length, 0);
+
+  const html = `<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<title>시카고 언약 장로교회 ${currentYear}년 샘터 조직표</title>
+<style>
+  body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; padding: 30px; color: #1a1a1a; }
+  h1   { font-family: 'Nanum Myeongjo', serif; font-size: 18px; color: #1a2744;
+         text-align: center; margin-bottom: 4px; font-weight: 800; }
+  .sub { text-align: center; font-size: 12px; color: #888; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; }
+  .guide { background: #fff8e8; border: 1px solid #f0d080; border-radius: 6px;
+           padding: 12px 16px; font-size: 12px; color: #6b4c00; margin-bottom: 20px; line-height: 1.7; }
+  .guide strong { color: #1a2744; }
+  .btn  { display: inline-block; margin: 6px 6px 0 0; padding: 8px 18px;
+          background: #1a2744; color: #fff; border: none; border-radius: 6px;
+          font-size: 13px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .btn-g { background: #0f9d58; }
+  @media print { .guide, .btn { display: none; } }
+</style>
+</head><body>
+<h1>시카고 언약 장로교회 ${currentYear}년 샘터 조직표</h1>
+<p class="sub">${state.length}지구 · ${totalSamters}샘터 · 총 ${totalMembers}명</p>
+
+<div class="guide">
+  <strong>구글 독스로 붙여넣기 방법:</strong><br>
+  1. 아래 표를 전체 선택 (Ctrl+A 또는 Cmd+A) 후 복사 (Ctrl+C / Cmd+C)<br>
+  2. <a href="https://docs.google.com/document/create" target="_blank" style="color:#1a2744;font-weight:700">Google Docs 새 문서</a>를 열고 붙여넣기 (Ctrl+V / Cmd+V)<br>
+  3. 또는 아래 <strong>"Google Docs 바로 열기"</strong> 버튼 클릭 후 붙여넣기
+</div>
+
+<div style="margin-bottom:16px">
+  <button class="btn" onclick="selectAll()">📋 표 전체 선택</button>
+  <a class="btn btn-g" href="https://docs.google.com/document/create" target="_blank">🔗 Google Docs 바로 열기</a>
+  <button class="btn" onclick="window.print()">🖨 인쇄</button>
+</div>
+
+<div id="table-wrap">
+<table>
+  <tbody>${tableRows}</tbody>
+</table>
+</div>
+
+<script>
+function selectAll() {
+  const wrap = document.getElementById('table-wrap');
+  const range = document.createRange();
+  range.selectNodeContents(wrap);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  try {
+    document.execCommand('copy');
+    alert('표가 클립보드에 복사되었습니다.\nGoogle Docs에 붙여넣기 하세요.');
+  } catch(e) {
+    alert('Ctrl+A로 전체 선택 후 Ctrl+C로 복사하세요.');
+  }
+}
+<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { toast('팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요.', 'err'); return; }
+  win.document.write(html);
+  win.document.close();
+  toast('구글 독스 출력 창이 열렸습니다', 'ok');
 }
 
 // ── 모달 공통 오버레이 ────────────────────────────────────────────
