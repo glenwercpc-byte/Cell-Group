@@ -382,6 +382,26 @@ function render() {
 
     tdTitle.appendChild(nameInp);
     tdTitle.appendChild(chiefSpan);
+
+    // X 삭제 버튼 — 샘터가 없을 때만 표시
+    if (dist.samters.length === 0) {
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '✕';
+      delBtn.title = '이 지구 삭제';
+      delBtn.style.cssText =
+        'margin-left:10px;background:rgba(255,80,80,.25);color:#fff;border:none;' +
+        'border-radius:50%;width:20px;height:20px;font-size:.65rem;cursor:pointer;' +
+        'line-height:1;padding:0;transition:background .15s;flex-shrink:0';
+      delBtn.addEventListener('mouseover', function() { this.style.background='rgba(255,80,80,.5)'; });
+      delBtn.addEventListener('mouseout',  function() { this.style.background='rgba(255,80,80,.25)'; });
+      delBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const idx = state.indexOf(dist);
+        if (idx !== -1) { state.splice(idx, 1); render(); toast(dist.name + ' 삭제됨', 'ok'); }
+      });
+      tdTitle.appendChild(delBtn);
+    }
+
     hdr.appendChild(tdTitle);
     tb.appendChild(hdr);
 
@@ -508,9 +528,23 @@ function updateStat() {
 }
 
 // ================================================================
-//  엑셀 내보내기
+//  자료제공 드롭다운
 // ================================================================
-function doExport() {
+function toggleExport() {
+  const b = document.getElementById('expb');
+  b.classList.toggle('hidden');
+}
+function closeExport() {
+  const b = document.getElementById('expb');
+  if (b) b.classList.add('hidden');
+}
+
+function doExport(type) {
+  closeExport();
+  if (type === 'xlsx') exportExcel();
+}
+
+function exportExcel() {
   try {
     saveCurrentToAllData();
     const wb   = XLSX.utils.book_new();
@@ -529,13 +563,10 @@ function doExport() {
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 18 }, { wch: 18 }];
-
-    // 헤더 굵게
     for (let c = 0; c < 4; c++) {
       const cell = XLSX.utils.encode_cell({ r: 0, c });
       if (ws[cell]) ws[cell].s = { font: { bold: true } };
     }
-
     XLSX.utils.book_append_sheet(wb, ws, currentYear + '년 조직표');
     XLSX.writeFile(wb, currentYear + '_시카고언약_샘터조직표.xlsx');
     toast('엑셀 다운로드 완료', 'ok');
@@ -570,8 +601,9 @@ function toast(msg, type = 'ok') {
 
 // 외부 클릭으로 패널 닫기
 document.addEventListener('click', function (e) {
-  if (!document.getElementById('yw')?.contains(e.target))  closeYP();
-  if (!document.getElementById('dpw')?.contains(e.target)) closeDp();
+  if (!document.getElementById('yw')?.contains(e.target))   closeYP();
+  if (!document.getElementById('dpw')?.contains(e.target))  closeDp();
+  if (!document.getElementById('expw')?.contains(e.target)) closeExport();
 });
 
 // ESC 키
