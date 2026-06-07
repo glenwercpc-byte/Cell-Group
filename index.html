@@ -41,12 +41,13 @@ input{font-family:var(--font-sans);outline:none}
 
 /* ── 통합 툴바 ──────────────────────────────── */
 .toolbar{
-  display:flex;align-items:center;gap:12px;
+  display:flex;align-items:center;
   background:#fff;border:2px solid var(--navy);border-radius:8px;
-  padding:10px 14px;margin-bottom:10px;
+  padding:9px 14px;margin-bottom:10px;
   box-shadow:0 2px 8px rgba(0,0,0,.07);
-  flex-wrap:wrap;
+  gap:10px;flex-wrap:wrap;
 }
+/* 왼쪽: 교회명+연도 */
 .tb-left{
   display:flex;align-items:center;gap:6px;
   flex-shrink:0;
@@ -58,14 +59,33 @@ input{font-family:var(--font-sans);outline:none}
 .tb-title-fix{
   font-size:.82rem;color:var(--navy);font-weight:600;white-space:nowrap;
 }
-.tb-btns{
-  display:flex;align-items:center;gap:6px;flex-shrink:0;
-}
+/* 가운데: 통계 (flex:1 + 센터) */
 .tb-stat{
-  margin-left:auto;
-  font-size:.72rem;color:var(--ink3);white-space:nowrap;
-  font-weight:500;
+  flex:1;text-align:center;
+  font-size:.74rem;color:var(--ink2);font-weight:600;white-space:nowrap;
 }
+/* 오른쪽: 버튼들 */
+.tb-btns{
+  display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;
+}
+/* 자료제공 드롭다운 */
+.export-wrap{position:relative;display:inline-block}
+.btn-export{background:#fff;color:var(--navy);padding:6px 13px;border-radius:5px;font-size:.73rem;font-weight:600;border:1.5px solid var(--navy);cursor:pointer}
+.btn-export:hover{background:#f0f3f8}
+.export-box{
+  position:absolute;top:calc(100% + 6px);right:0;
+  background:#fff;border:1.5px solid var(--navy);border-radius:8px;
+  overflow:hidden;z-index:500;min-width:140px;
+  box-shadow:0 8px 22px rgba(0,0,0,.14);
+}
+.export-item{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;font-size:.78rem;font-weight:500;color:var(--ink);
+  cursor:pointer;transition:background .12s;border-bottom:.5px solid var(--line2);
+}
+.export-item:last-child{border-bottom:none}
+.export-item:hover{background:#f0f3f8}
+.export-item .ei-icon{font-size:1rem}
 
 /* ── 연도 버튼 & 패널 ───────────────────────── */
 .year-wrap{position:relative;display:inline-block}
@@ -164,8 +184,7 @@ input{font-family:var(--font-sans);outline:none}
 
 .btn-save-ctrl{background:var(--green);color:#fff;padding:6px 13px;border-radius:5px;font-size:.73rem;font-weight:600;border:none}
 .btn-save-ctrl:hover{background:var(--green2)}
-.btn-export{background:#fff;color:var(--navy);padding:6px 13px;border-radius:5px;font-size:.73rem;font-weight:600;border:1.5px solid var(--navy)}
-.btn-export:hover{background:#f0f3f8}
+
 
 
 
@@ -308,7 +327,10 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
         <span class="tb-title-fix">샘터 조직표</span>
       </div>
 
-      <!-- 가운데: 버튼들 -->
+      <!-- 가운데: 통계 -->
+      <div class="tb-stat" id="stat"></div>
+
+      <!-- 오른쪽: 버튼들 -->
       <div class="tb-btns">
         <button class="btn-dist" onclick="addDistrict()">＋ 지구 추가</button>
         <div class="dp-wrap" id="dpw">
@@ -327,11 +349,15 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
           </div>
         </div>
         <button class="btn-save-ctrl" onclick="saveOrg()">전체 저장</button>
-        <button class="btn-export" onclick="doExport()">⬇ 엑셀</button>
+        <div class="export-wrap" id="expw">
+          <button class="btn-export" onclick="toggleExport()">자료제공 ▾</button>
+          <div class="export-box hidden" id="expb">
+            <div class="export-item" onclick="doExport('xlsx')">
+              <span class="ei-icon">📊</span> 엑셀(.xlsx)
+            </div>
+          </div>
+        </div>
       </div>
-
-      <!-- 오른쪽: 통계 -->
-      <div class="tb-stat" id="stat"></div>
 
     </div>
 
