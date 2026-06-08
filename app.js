@@ -13,12 +13,13 @@
 // ================================================================
 
 // ★ Apps Script 배포 URL로 교체하세요
-const API_URL     = 'https://script.google.com/macros/s/AKfycbzNhG1aTwP6AMopJ3_2aj3RENoFDGhYWrcmdznPbu5oKTucKYmQzhz72sZ-5N8-Hqyr/exec';
+const API_URL     = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
 const ORG_KEY     = 'samter_org_final';
 const ATT_KEY     = 'samter_attendance';
 const SAVE_PASSWORD = '4241';
 
 // ── 전역 상태 ────────────────────────────────────────────────────
+let SESSION_TOKEN = null;   // Google Sheets 세션 토큰
 let allData     = {};   // { '2026': [ {name, samters:[]} ] }
 let currentYear = '2026';
 let state       = [];   // 현재 연도 작업 districts
@@ -55,9 +56,63 @@ const BASE_2026 = [
 //  초기화
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
-  loadLocalData();
-  initFromSheets();   // Sheets에서 최신 데이터 로드
+  // localStorage에 저장된 세션 토큰 복원
+  SESSION_TOKEN = sessionStorage.getItem('samter_session');
+  if (SESSION_TOKEN) {
+    showApp();
+    loadLocalData();
+    initFromSheets();
+  } else {
+    // 로그인 화면 표시
+    document.getElementById('login').style.display = 'block';
+  }
 });
+
+// ================================================================
+//  로그인 / 세션
+// ================================================================
+async function doLogin() {
+  const pw    = document.getElementById('pw').value.trim();
+  const errEl = document.getElementById('lerr');
+  if (!pw) { errEl.textContent = '비밀번호를 입력하세요.'; return; }
+  errEl.textContent = '';
+
+  // API_URL이 설정되지 않은 경우 로컬 모드
+  if (API_URL.includes('YOUR_DEPLOY_ID')) {
+    if (pw === '1424') {
+      SESSION_TOKEN = 'local';
+      sessionStorage.setItem('samter_session', 'local');
+      showApp();
+      loadLocalData();
+      return;
+    }
+    errEl.textContent = '비밀번호가 틀렸습니다.';
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'login', password: pw }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    SESSION_TOKEN = json.data.sessionToken;
+    sessionStorage.setItem('samter_session', SESSION_TOKEN);
+    document.getElementById('pw').value = '';
+    showApp();
+    loadLocalData();
+    initFromSheets();
+  } catch(e) {
+    errEl.textContent = e.message || '로그인 실패';
+  }
+}
+
+function showApp() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display   = 'block';
+}
 
 function loadLocalData() {
   try {
@@ -114,12 +169,24 @@ function convertSheetsOrg(districts) {
 //  API 통신
 // ================================================================
 async function apiCall(data) {
+  // 세션 토큰 자동 첨부 (로컬 모드 제외)
+  if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
+    data.sessionToken = SESSION_TOKEN;
+  }
   const res  = await fetch(API_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'text/plain' },
     body:    JSON.stringify(data),
   });
   const json = await res.json();
+  // 세션 만료 시 로그인 화면으로
+  if (!json.ok && json.code === 401) {
+    SESSION_TOKEN = null;
+    sessionStorage.removeItem('samter_session');
+    document.getElementById('app').style.display   = 'none';
+    document.getElementById('login').style.display = 'block';
+    throw new Error('세션 만료. 다시 로그인하세요.');
+  }
   if (!json.ok) throw new Error(json.error || '서버 오류');
   return json.data;
 }
