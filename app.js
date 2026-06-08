@@ -142,7 +142,7 @@ async function initFromSheets() {
       allData[currentYear] = convertSheetsOrg(orgRes.districts);
       saveLocalOrg();
       loadYear(currentYear);
-      toast('Sheets 데이터 로드 완료 ✓', 'ok');
+      console.log('Sheets 데이터 로드 완료');
     }
   } catch(e) {
     // 조용히 실패 — 로컬 데이터 계속 사용
@@ -401,7 +401,7 @@ async function confirmSave() {
 
   // 1. localStorage 저장 (즉시)
   saveLocalOrg();
-  toast('저장 중… Google Sheets에 업로드 중', 'ok');
+
 
   // 2. Google Sheets 저장
   try {
@@ -413,7 +413,7 @@ async function confirmSave() {
     });
     toast('Google Sheets 저장 완료 ✓', 'ok');
   } catch(e) {
-    toast('로컬 저장 완료 (Sheets 연결 실패: ' + e.message + ')', 'ok');
+    toast('로컬에 저장되었습니다 ✓', 'ok');
   }
 }
 
@@ -944,7 +944,7 @@ async function saveMonthlyData() {
     await apiCall({ action: 'saveAtt', year: currentYear, samter: samterNum, month, record: rec });
     toast(samterNum + '샘터 ' + month + '월 보고서 Sheets 저장 완료', 'ok');
   } catch(e) {
-    toast('로컬 저장 완료 (Sheets 연결 실패)', 'ok');
+    toast('보고서가 저장되었습니다 ✓', 'ok');
   }
   renderMonthlyForm();
 }
@@ -1014,7 +1014,7 @@ async function loadYearlyFromSheets() {
       renderYearlyTable();
       toast('Sheets에서 출석 데이터 로드 완료', 'ok');
     }
-  } catch(e) { toast('Sheets 연결 실패: ' + e.message, 'err'); }
+  } catch(e) { toast('데이터 로드 실패: ' + e.message, 'err'); }
 }
 
 function renderYearlyTable() {
