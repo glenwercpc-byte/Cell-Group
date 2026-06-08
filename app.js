@@ -71,41 +71,57 @@ window.addEventListener('DOMContentLoaded', () => {
 // ================================================================
 //  로그인 / 세션
 // ================================================================
-async function doLogin() {
+async function handleLogin() {
   const pw    = document.getElementById('pw').value.trim();
   const errEl = document.getElementById('lerr');
   if (!pw) { errEl.textContent = '비밀번호를 입력하세요.'; return; }
-  errEl.textContent = '';
+  errEl.textContent = '확인 중…';
 
-  // API_URL이 설정되지 않은 경우 로컬 모드
-  if (API_URL.includes('YOUR_DEPLOY_ID')) {
+  // API_URL 미설정 → 로컬 모드
+  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) {
     if (pw === '1424') {
       SESSION_TOKEN = 'local';
       sessionStorage.setItem('samter_session', 'local');
+      errEl.textContent = '';
       showApp();
       loadLocalData();
-      return;
+    } else {
+      errEl.textContent = '비밀번호가 틀렸습니다.';
     }
-    errEl.textContent = '비밀번호가 틀렸습니다.';
     return;
   }
 
+  // Google Sheets 로그인
   try {
     const res = await fetch(API_URL, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'login', password: pw }),
+      body:    JSON.stringify({ action: 'login', password: pw }),
     });
     const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    if (!json.ok) {
+      errEl.textContent = json.error || '로그인 실패';
+      return;
+    }
     SESSION_TOKEN = json.data.sessionToken;
     sessionStorage.setItem('samter_session', SESSION_TOKEN);
     document.getElementById('pw').value = '';
+    errEl.textContent = '';
     showApp();
     loadLocalData();
     initFromSheets();
   } catch(e) {
-    errEl.textContent = e.message || '로그인 실패';
+    // fetch 자체 실패 (네트워크 오류 등) → 로컬 모드로 fallback
+    if (pw === '1424') {
+      SESSION_TOKEN = 'local';
+      sessionStorage.setItem('samter_session', 'local');
+      errEl.textContent = '';
+      showApp();
+      loadLocalData();
+      toast('오프라인 모드로 시작합니다', 'ok');
+    } else {
+      errEl.textContent = '연결 오류: ' + (e.message || 'fetch 실패');
+    }
   }
 }
 
