@@ -100,18 +100,17 @@ async function handleLogin() {
     errEl.textContent = '';
     showApp();
     loadLocalData();
-    initFromSheets();
+    initFromSheets();   // 백그라운드에서 Sheets 동기화 (실패해도 무관)
   } catch(e) {
-    // fetch 실패 → 로컬 모드 fallback
+    // Sheets 연결 실패 → 비밀번호가 맞으면 로컬 모드로 진입
     if (pw === '1424') {
       SESSION_TOKEN = 'local';
       sessionStorage.setItem('samter_session', 'local');
       errEl.textContent = '';
       showApp();
       loadLocalData();
-      toast('오프라인 모드로 시작합니다 (Sheets 연결 안됨)', 'ok');
     } else {
-      errEl.textContent = '오류: ' + (e.message || '연결 실패');
+      errEl.textContent = '비밀번호가 틀렸습니다.';
     }
   }
 }
@@ -133,25 +132,21 @@ function loadLocalData() {
 }
 
 async function initFromSheets() {
-  // 저장된 연도 목록 가져오기
+  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
+  if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
+
   try {
-    const res = await apiCall({ action: 'getAllYears' });
-    if (res.years && res.years.length) {
-      // Sheets에 있는 연도 데이터를 모두 로드
-      for (const y of res.years) {
-        const orgRes = await apiCall({ action: 'getOrg', year: y });
-        if (orgRes.districts && Object.keys(orgRes.districts).length) {
-          allData[y] = convertSheetsOrg(orgRes.districts);
-        }
-      }
+    // 현재 연도 조직표만 로드 (getAllYears 생략 — URL 길이 절약)
+    const orgRes = await apiCall({ action: 'getOrg', year: currentYear });
+    if (orgRes.districts && Object.keys(orgRes.districts).length) {
+      allData[currentYear] = convertSheetsOrg(orgRes.districts);
       saveLocalOrg();
-      // 현재 연도 다시 렌더링
       loadYear(currentYear);
-      toast('Google Sheets에서 최신 데이터 로드 완료', 'ok');
+      toast('Sheets 데이터 로드 완료 ✓', 'ok');
     }
   } catch(e) {
-    // 오프라인이면 localStorage 데이터 사용
-    console.log('Sheets 연동 실패, 로컬 데이터 사용:', e.message);
+    // 조용히 실패 — 로컬 데이터 계속 사용
+    console.warn('Sheets 로드 실패 (로컬 데이터 사용):', e.message);
   }
 }
 
