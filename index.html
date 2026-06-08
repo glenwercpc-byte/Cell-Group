@@ -32,7 +32,7 @@ input{font-family:var(--font-sans);outline:none}
 
 
 /* ── 앱 ──────────────────────────────────────── */
-#app{display:block}
+#app{display:none}
 
 
 
@@ -280,6 +280,35 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
 </style>
 </head>
 <body>
+
+<!-- 로그인 -->
+<div id="login" style="display:none">
+  <div style="min-height:100dvh;display:flex;align-items:center;justify-content:center;
+              background:linear-gradient(160deg,#1a2744 0%,#2d6a4f 100%);padding:20px">
+    <div style="background:#fff;border-radius:16px;padding:44px 38px 38px;
+                width:100%;max-width:340px;text-align:center;
+                box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:2.2rem;margin-bottom:8px">🌿</div>
+      <h1 style="font-family:'Nanum Myeongjo',serif;font-size:1.3rem;color:#1a2744;
+                 font-weight:800;margin-bottom:4px">시카고 언약 장로교회</h1>
+      <p style="font-size:.78rem;color:#888;margin-bottom:28px;letter-spacing:.04em">샘터 조직 관리 시스템</p>
+      <input type="password" id="pw" placeholder="비밀번호 입력"
+             onkeydown="if(event.key==='Enter')doLogin()"
+             style="width:100%;padding:12px 14px;border:2px solid #e8e8e8;border-radius:8px;
+                    font-size:.95rem;margin-bottom:14px;font-family:inherit;outline:none;
+                    box-sizing:border-box;transition:border-color .2s"
+             onfocus="this.style.borderColor='#1a2744'"
+             onblur="this.style.borderColor='#e8e8e8'">
+      <button onclick="doLogin()"
+        style="width:100%;padding:13px;background:#1a2744;color:#fff;border:none;
+               border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;
+               font-family:inherit;transition:background .2s"
+        onmouseover="this.style.background='#243058'"
+        onmouseout="this.style.background='#1a2744'">로그인</button>
+      <p id="lerr" style="color:#c0392b;font-size:.8rem;margin-top:10px;min-height:20px"></p>
+    </div>
+  </div>
+</div>
 
 <!-- 앱 -->
 <div id="app">
