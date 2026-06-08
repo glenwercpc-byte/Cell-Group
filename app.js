@@ -91,19 +91,10 @@ async function handleLogin() {
     return;
   }
 
-  // Google Sheets 로그인
+  // Google Sheets 로그인 (apiCall 사용 — GET 방식)
   try {
-    const res = await fetch(API_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body:    JSON.stringify({ action: 'login', password: pw }),
-    });
-    const json = await res.json();
-    if (!json.ok) {
-      errEl.textContent = json.error || '로그인 실패';
-      return;
-    }
-    SESSION_TOKEN = json.data.sessionToken;
+    const data = await apiCall({ action: 'login', password: pw });
+    SESSION_TOKEN = data.sessionToken;
     sessionStorage.setItem('samter_session', SESSION_TOKEN);
     document.getElementById('pw').value = '';
     errEl.textContent = '';
@@ -111,16 +102,16 @@ async function handleLogin() {
     loadLocalData();
     initFromSheets();
   } catch(e) {
-    // fetch 자체 실패 (네트워크 오류 등) → 로컬 모드로 fallback
+    // fetch 실패 → 로컬 모드 fallback
     if (pw === '1424') {
       SESSION_TOKEN = 'local';
       sessionStorage.setItem('samter_session', 'local');
       errEl.textContent = '';
       showApp();
       loadLocalData();
-      toast('오프라인 모드로 시작합니다', 'ok');
+      toast('오프라인 모드로 시작합니다 (Sheets 연결 안됨)', 'ok');
     } else {
-      errEl.textContent = '연결 오류: ' + (e.message || 'fetch 실패');
+      errEl.textContent = '오류: ' + (e.message || '연결 실패');
     }
   }
 }
@@ -189,12 +180,18 @@ async function apiCall(data) {
   if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
     data.sessionToken = SESSION_TOKEN;
   }
-  const res  = await fetch(API_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body:    JSON.stringify(data),
+
+  // Apps Script는 GET 파라미터 방식 사용 (CORS 문제 우회)
+  // 단순 action은 GET, 데이터가 큰 경우도 payload 파라미터로 전달
+  const params = new URLSearchParams();
+  params.set('payload', JSON.stringify(data));
+
+  const res  = await fetch(API_URL + '?' + params.toString(), {
+    method:  'GET',
+    redirect: 'follow',
   });
   const json = await res.json();
+
   // 세션 만료 시 로그인 화면으로
   if (!json.ok && json.code === 401) {
     SESSION_TOKEN = null;
