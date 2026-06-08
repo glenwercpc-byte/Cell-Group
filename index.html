@@ -293,13 +293,13 @@ table{width:100%;border-collapse:collapse;font-size:.78rem}
                  font-weight:800;margin-bottom:4px">시카고 언약 장로교회</h1>
       <p style="font-size:.78rem;color:#888;margin-bottom:28px;letter-spacing:.04em">샘터 조직 관리 시스템</p>
       <input type="password" id="pw" placeholder="비밀번호 입력"
-             onkeydown="if(event.key==='Enter')doLogin()"
+             onkeydown="if(event.key==='Enter')handleLogin()"
              style="width:100%;padding:12px 14px;border:2px solid #e8e8e8;border-radius:8px;
                     font-size:.95rem;margin-bottom:14px;font-family:inherit;outline:none;
                     box-sizing:border-box;transition:border-color .2s"
              onfocus="this.style.borderColor='#1a2744'"
              onblur="this.style.borderColor='#e8e8e8'">
-      <button onclick="doLogin()"
+      <button onclick="handleLogin()"
         style="width:100%;padding:13px;background:#1a2744;color:#fff;border:none;
                border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;
                font-family:inherit;transition:background .2s"
