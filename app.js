@@ -56,13 +56,9 @@ const BASE_2026 = [
 //  초기화
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
-  SESSION_TOKEN = sessionStorage.getItem('samter_session');
-  if (SESSION_TOKEN) {
-    showApp();
-    initApp();
-  } else {
-    document.getElementById('login').style.display = 'block';
-  }
+  // 테스트 모드: 로그인 없이 바로 시작
+  SESSION_TOKEN = 'test-session';
+  initApp();
 });
 
 // 앱 초기화 — Sheets 우선, 실패 시 localStorage → BASE_2026
@@ -137,8 +133,10 @@ async function handleLogin() {
 }
 
 function showApp() {
-  document.getElementById('login').style.display = 'none';
-  document.getElementById('app').style.display   = 'block';
+  const login = document.getElementById('login');
+  const app   = document.getElementById('app');
+  if (login) login.style.display = 'none';
+  if (app)   app.style.display   = 'block';
 }
 
 function loadLocalData() {
