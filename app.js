@@ -449,15 +449,26 @@ async function confirmSave() {
   saveLocalOrg();
   toast('저장 완료 ✓', 'ok');
 
-  // 진단: 조건 확인
-  const hasToken  = !!SESSION_TOKEN;
+  // 진단: 조건 alert로 확인
+  const diagToken = SESSION_TOKEN || '(없음)';
+  const diagUrl   = API_URL || '(없음)';
   const isLocal   = SESSION_TOKEN === 'local';
   const hasUrl    = !!API_URL && !API_URL.includes('YOUR_DEPLOY_ID');
 
-  if (!hasToken)  { toast('토큰 없음 — 로그인 필요', 'err'); return; }
-  if (isLocal)    { toast('오프라인 모드 — Sheets 연결 안됨', 'err'); return; }
-  if (!hasUrl)    { toast('API_URL 미설정', 'err'); return; }
+  if (!SESSION_TOKEN) {
+    alert('[진단] 세션 토큰 없음\n로그인이 필요합니다.');
+    return;
+  }
+  if (isLocal) {
+    alert('[진단] 오프라인(local) 모드\nSheets 연결이 안 된 상태입니다.\n\n로그인 시 Sheets에서 세션을 받아야 합니다.');
+    return;
+  }
+  if (!hasUrl) {
+    alert('[진단] API_URL 미설정\napp.js의 API_URL을 확인하세요.\n현재값: ' + diagUrl);
+    return;
+  }
 
+  alert('[진단] 조건 모두 통과\n토큰: ' + diagToken.substring(0,20) + '...\nsyncAllToSheets 시작');
   syncAllToSheets();
 }
 
@@ -465,13 +476,12 @@ async function syncAllToSheets() {
   let cellCount = 0;
   toast('Sheets 동기화 중…', 'ok');
 
-  // 첫 셀만 테스트
+  // 첫 셀 테스트 (alert로 결과 표시)
   try {
     const firstDist   = state[0];
     const firstSamter = firstDist?.samters[0];
     if (firstSamter) {
-      toast('첫 셀 테스트 중: ' + firstSamter.num + '샘터 청지기…', 'ok');
-      await apiCall({
+      const result = await apiCall({
         action: 'saveCell',
         year:   currentYear,
         samter: firstSamter.num,
@@ -479,10 +489,10 @@ async function syncAllToSheets() {
         index:  '0',
         value:  firstSamter.keeper || '(없음)',
       });
-      toast('첫 셀 성공! 전체 동기화 시작…', 'ok');
+      alert('[진단] 첫 셀 저장 성공!\n샘터: ' + firstSamter.num + '\n청지기: ' + firstSamter.keeper + '\n결과: ' + JSON.stringify(result));
     }
   } catch(e) {
-    toast('첫 셀 실패: ' + e.message, 'err');
+    alert('[진단] 첫 셀 저장 실패!\n오류: ' + e.message);
     return;
   }
 
