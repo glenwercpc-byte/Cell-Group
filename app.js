@@ -136,34 +136,55 @@ async function initFromSheets() {
   if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
 
   try {
-    // 현재 연도 조직표만 로드 (getAllYears 생략 — URL 길이 절약)
     const orgRes = await apiCall({ action: 'getOrg', year: currentYear });
     if (orgRes.districts && Object.keys(orgRes.districts).length) {
-      allData[currentYear] = convertSheetsOrg(orgRes.districts);
-      saveLocalOrg();
-      loadYear(currentYear);
-      console.log('Sheets 데이터 로드 완료');
+      const converted = convertSheetsOrg(orgRes.districts);
+      // Sheets 데이터가 실제로 있을 때만 덮어씀
+      if (converted.length > 0 &&
+          converted.some(d => d.samters.length > 0)) {
+        allData[currentYear] = converted;
+        saveLocalOrg();
+        loadYear(currentYear);
+        console.log('Sheets 데이터 로드 완료:', converted.length + '지구');
+      } else {
+        console.log('Sheets 데이터 없음 — 로컬/기본 데이터 유지');
+      }
     }
   } catch(e) {
-    // 조용히 실패 — 로컬 데이터 계속 사용
     console.warn('Sheets 로드 실패 (로컬 데이터 사용):', e.message);
   }
 }
 
-// Sheets 형식 → allData 형식 변환
-// districts: { '1지구': { '11': { keeper, members[] } } }
+// Sheets getOrg 반환 형식 → allData 형식 변환
+// getOrg 반환: { '1지구': { order, samters:[{num,keeper,members[],samterOrder}] } }
 function convertSheetsOrg(districts) {
   const result = [];
-  Object.entries(districts).forEach(([distName, samters]) => {
-    result.push({
-      name: distName,
-      samters: Object.entries(samters).map(([num, info]) => ({
-        num, keeper: info.keeper, members: info.members,
-      })),
-    });
+  Object.entries(districts).forEach(([distName, distInfo]) => {
+    // distInfo = { order, samters:[] } 또는 구형 { '11': {keeper,members} }
+    let samterList = [];
+    if (distInfo && Array.isArray(distInfo.samters)) {
+      // 새 형식
+      samterList = distInfo.samters.map(s => ({
+        num:     s.num,
+        keeper:  s.keeper  || '',
+        members: (s.members || []).filter(Boolean),
+      }));
+    } else if (distInfo && typeof distInfo === 'object') {
+      // 구형 호환
+      samterList = Object.entries(distInfo)
+        .filter(([k]) => k !== 'order')
+        .map(([num, info]) => ({
+          num,
+          keeper:  info.keeper  || '',
+          members: (info.members || []).filter(Boolean),
+        }));
+    }
+    if (samterList.length > 0) {
+      result.push({ name: distName, samters: samterList });
+    }
   });
   // 지구명 순서 정렬
-  result.sort((a, b) => a.name.localeCompare(b.name));
+  result.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
   return result;
 }
 
