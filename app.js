@@ -194,13 +194,18 @@ async function apiCall(data) {
   if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
     data.sessionToken = SESSION_TOKEN;
   }
-  // 셀 단위 저장 — 데이터가 작으므로 GET 방식으로 통일
-  const params = new URLSearchParams();
-  params.set('payload', encodeURIComponent(JSON.stringify(data)));
-  const res  = await fetch(API_URL + '?' + params.toString(), {
-    method: 'GET', redirect: 'follow',
-  });
-  const json = await res.json();
+
+  // GET 방식: payload를 단순 JSON 문자열로 (이중 인코딩 없이)
+  const jsonStr = JSON.stringify(data);
+  const url = API_URL + '?payload=' + encodeURIComponent(jsonStr);
+
+  const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+  const text = await res.text();   // JSON 파싱 전에 텍스트로 먼저 받음
+
+  let json;
+  try { json = JSON.parse(text); }
+  catch(e) { throw new Error('응답 파싱 실패: ' + text.substring(0, 100)); }
+
   if (!json.ok && json.code === 401) {
     SESSION_TOKEN = null;
     sessionStorage.removeItem('samter_session');
