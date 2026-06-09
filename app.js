@@ -449,11 +449,16 @@ async function confirmSave() {
   saveLocalOrg();
   toast('저장 완료 ✓', 'ok');
 
-  // Sheets에 셀 단위 전체 동기화 (백그라운드)
-  if (SESSION_TOKEN && SESSION_TOKEN !== 'local' &&
-      API_URL && !API_URL.includes('YOUR_DEPLOY_ID')) {
-    syncAllToSheets();
-  }
+  // 진단: 조건 확인
+  const hasToken  = !!SESSION_TOKEN;
+  const isLocal   = SESSION_TOKEN === 'local';
+  const hasUrl    = !!API_URL && !API_URL.includes('YOUR_DEPLOY_ID');
+
+  if (!hasToken)  { toast('토큰 없음 — 로그인 필요', 'err'); return; }
+  if (isLocal)    { toast('오프라인 모드 — Sheets 연결 안됨', 'err'); return; }
+  if (!hasUrl)    { toast('API_URL 미설정', 'err'); return; }
+
+  syncAllToSheets();
 }
 
 async function syncAllToSheets() {
