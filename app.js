@@ -13,7 +13,7 @@
 // ================================================================
 
 // ★ Apps Script 배포 URL로 교체하세요
-const API_URL     = 'https://script.google.com/macros/s/AKfycbzNhG1aTwP6AMopJ3_2aj3RENoFDGhYWrcmdznPbu5oKTucKYmQzhz72sZ-5N8-Hqyr/exec';
+const API_URL     = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
 const ORG_KEY     = 'samter_org_final';
 const ATT_KEY     = 'samter_attendance';
 const SAVE_PASSWORD = '4241';
@@ -176,15 +176,28 @@ async function apiCall(data) {
     data.sessionToken = SESSION_TOKEN;
   }
 
-  // Apps Script는 GET 파라미터 방식 사용 (CORS 문제 우회)
-  // 단순 action은 GET, 데이터가 큰 경우도 payload 파라미터로 전달
-  const params = new URLSearchParams();
-  params.set('payload', JSON.stringify(data));
+  // 저장 액션(데이터 큰 것)은 POST, 조회는 GET
+  const isWrite = ['saveOrg','saveAtt','login','logout'].includes(data.action);
+  let res;
 
-  const res  = await fetch(API_URL + '?' + params.toString(), {
-    method:  'GET',
-    redirect: 'follow',
-  });
+  if (isWrite) {
+    // POST — no-cors 없이 직접 전송 (Apps Script 웹앱은 POST 허용)
+    res = await fetch(API_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify(data),
+      redirect: 'follow',
+    });
+  } else {
+    // GET — 짧은 조회용
+    const params = new URLSearchParams();
+    params.set('payload', JSON.stringify(data));
+    res = await fetch(API_URL + '?' + params.toString(), {
+      method:  'GET',
+      redirect: 'follow',
+    });
+  }
+
   const json = await res.json();
 
   // 세션 만료 시 로그인 화면으로
