@@ -16,10 +16,8 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyURNDdOrRtjq8MiO7ZcXzD_tagxH18Jad9l7asR2oSimGIf4Ak1SL0ImE5EmEkN-OR/exec';
 const ORG_KEY     = 'samter_org_final';
 const ATT_KEY     = 'samter_attendance';
-const SAVE_PASSWORD = '4241';
 
 // ── 전역 상태 ────────────────────────────────────────────────────
-let SESSION_TOKEN = null;   // Google Sheets 세션 토큰
 let allData     = {};   // { '2026': [ {name, samters:[]} ] }
 let currentYear = '2026';
 let state       = [];   // 현재 연도 작업 districts
@@ -56,81 +54,11 @@ const BASE_2026 = [
 //  초기화
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
-  // 테스트 모드: 로그인 없이 바로 시작
-  SESSION_TOKEN = 'test-session';
-  initApp();
+  loadLocalData();
+  loadYear('2026');
 });
 
-// 앱 초기화 — Sheets 우선, 실패 시 localStorage → BASE_2026
-async function initApp() {
-  // 1. 일단 localStorage 로드해서 빠르게 화면 표시
-  loadLocalData();
 
-  // 2. Sheets에서 최신 데이터 로드 (세션 있을 때만)
-  if (SESSION_TOKEN && SESSION_TOKEN !== 'local' &&
-      API_URL && !API_URL.includes('YOUR_DEPLOY_ID')) {
-    try {
-      const orgRes = await apiCall({ action: 'getOrg', year: currentYear });
-      if (orgRes && orgRes.districts) {
-        const converted = convertSheetsOrg(orgRes.districts);
-        if (converted.length > 0 && converted.some(d => d.samters.length > 0)) {
-          allData[currentYear] = converted;
-          saveLocalOrg();
-          loadYear(currentYear);
-          console.log('Sheets 데이터 로드 완료');
-        }
-      }
-    } catch(e) {
-      console.warn('Sheets 로드 실패, 로컬 데이터 사용:', e.message);
-    }
-  }
-}
-
-// ================================================================
-//  로그인 / 세션
-// ================================================================
-async function handleLogin() {
-  const pw    = document.getElementById('pw').value.trim();
-  const errEl = document.getElementById('lerr');
-  if (!pw) { errEl.textContent = '비밀번호를 입력하세요.'; return; }
-  errEl.textContent = '확인 중…';
-
-  // API_URL 미설정 → 로컬 모드
-  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) {
-    if (pw === '1424') {
-      SESSION_TOKEN = 'local';
-      sessionStorage.setItem('samter_session', 'local');
-      errEl.textContent = '';
-      showApp();
-      initApp();
-    } else {
-      errEl.textContent = '비밀번호가 틀렸습니다.';
-    }
-    return;
-  }
-
-  // Google Sheets 로그인 (apiCall 사용 — GET 방식)
-  try {
-    const data = await apiCall({ action: 'login', password: pw });
-    SESSION_TOKEN = data.sessionToken;
-    sessionStorage.setItem('samter_session', SESSION_TOKEN);
-    document.getElementById('pw').value = '';
-    errEl.textContent = '';
-    showApp();
-    initApp();
-  } catch(e) {
-    // Sheets 연결 실패 → 비밀번호가 맞으면 로컬 모드로 진입
-    if (pw === '1424') {
-      SESSION_TOKEN = 'local';
-      sessionStorage.setItem('samter_session', 'local');
-      errEl.textContent = '';
-      showApp();
-      initApp();
-    } else {
-      errEl.textContent = '비밀번호가 틀렸습니다.';
-    }
-  }
-}
 
 function showApp() {
   const login = document.getElementById('login');
@@ -144,6 +72,8 @@ function loadLocalData() {
     const att = localStorage.getItem(ATT_KEY);
     if (att) attData = JSON.parse(att);
   } catch(e) {}
+  allData['2026'] = BASE_2026;
+} catch(e) {}
   // 항상 최신 BASE_2026 사용 (localStorage 조직표 캐시 무시)
   allData['2026'] = BASE_2026;
   loadYear('2026');
@@ -187,39 +117,47 @@ function convertSheetsOrg(districts) {
 // ================================================================
 //  API 통신
 // ================================================================
-async function apiCall(data) {
-  if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
-    data.sessionToken = SESSION_TOKEN;
-  }
+// JSONP — script 태그로 CORS 완전 우회
+function apiCall(data) {
+  return new Promise((resolve, reject) => {
+    const cbName = '__cb' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+    const timer  = setTimeout(() => {
+      delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      reject(new Error('응답 시간 초과 (15초)'));
+    }, 15000);
 
-  // GET 방식: payload를 단순 JSON 문자열로 (이중 인코딩 없이)
-  const jsonStr = JSON.stringify(data);
-  const url = API_URL + '?payload=' + encodeURIComponent(jsonStr);
+    window[cbName] = function(json) {
+      clearTimeout(timer);
+      delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      if (!json.ok) { reject(new Error(json.error || '오류')); return; }
+      resolve(json.data);
+    };
 
-  const res = await fetch(url, { method: 'GET', redirect: 'follow' });
-  const text = await res.text();   // JSON 파싱 전에 텍스트로 먼저 받음
+    const url = API_URL
+      + '?callback=' + cbName
+      + '&payload=' + encodeURIComponent(JSON.stringify(data));
 
-  let json;
-  try { json = JSON.parse(text); }
-  catch(e) { throw new Error('응답 파싱 실패: ' + text.substring(0, 100)); }
-
-  if (!json.ok && json.code === 401) {
-    SESSION_TOKEN = null;
-    sessionStorage.removeItem('samter_session');
-    document.getElementById('app').style.display   = 'none';
-    document.getElementById('login').style.display = 'block';
-    throw new Error('세션 만료. 다시 로그인하세요.');
-  }
-  if (!json.ok) throw new Error(json.error || '서버 오류');
-  return json.data;
+    const s = document.createElement('script');
+    s.id  = cbName;
+    s.src = url;
+    s.onerror = () => {
+      clearTimeout(timer);
+      delete window[cbName];
+      s.remove();
+      reject(new Error('네트워크 오류'));
+    };
+    document.head.appendChild(s);
+  });
 }
 
 // 셀 하나를 Sheets에 저장 (실패해도 무시 — 로컬엔 이미 저장됨)
 // 수정된 샘터 추적
 const dirtySet = new Set();
 function markDirty(samterNum) { dirtySet.add(String(samterNum)); }
-function syncCell(samterNum) { markDirty(samterNum); }
-function syncMeta(samterNum) { markDirty(samterNum); }
 
 // ================================================================
 //  연도 패널
@@ -356,9 +294,6 @@ function saveCurrentToAllData() {
   }));
 }
 
-function saveLocalOrg() {
-  try { localStorage.setItem(ORG_KEY, JSON.stringify(allData)); } catch(e) {}
-}
 function saveLocalAtt() {
   try { localStorage.setItem(ATT_KEY, JSON.stringify(attData)); } catch(e) {}
 }
@@ -366,11 +301,10 @@ function saveLocalAtt() {
 // ── 전체 저장 (비밀번호 확인 → Sheets + localStorage) ───────────
 function saveOrg() {
   saveCurrentToAllData();
-  saveLocalOrg();
   syncAllToSheets();
 }
-function closeSaveOverlay() {}
-async function confirmSave() { saveOrg(); }
+
+function markDirty(samterNum) { dirtySet.add(String(samterNum)); }
 
 async function syncAllToSheets() {
   const targets = [];
@@ -381,10 +315,8 @@ async function syncAllToSheets() {
       }
     });
   });
-
   if (targets.length === 0) { toast('변경 내용 없음', 'ok'); return; }
   toast('저장 중… (0/' + targets.length + '샘터)', 'ok');
-
   let done = 0, failed = 0;
   for (const { dist, samter } of targets) {
     try {
@@ -408,7 +340,7 @@ async function syncAllToSheets() {
   }
   dirtySet.clear();
   if (failed === 0) toast('저장 완료 (' + done + '샘터) ✓', 'ok');
-  else toast('완료 ' + done + '/ 실패 ' + failed + '샘터', 'err');
+  else toast('완료 ' + done + ' / 실패 ' + failed, 'err');
 }
 
 // ================================================================
