@@ -196,10 +196,18 @@ async function apiCall(data) {
 async function syncCell(samter, type, index, value) {
   if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
   if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
+  // 빈 값이면 삭제 액션, 있으면 저장
   try {
-    await apiCall({ action: 'saveCell', year: currentYear,
-                    samter, type, index: String(index), value: String(value) });
-  } catch(e) { console.warn('셀 동기화 실패:', e.message); }
+    if (!value) {
+      await apiCall({ action: 'deleteCell', year: currentYear,
+                      samter, type, index: String(index) });
+    } else {
+      await apiCall({ action: 'saveCell', year: currentYear,
+                      samter, type, index: String(index), value: String(value) });
+    }
+  } catch(e) {
+    console.warn('셀 동기화 실패 (로컬엔 저장됨):', e.message);
+  }
 }
 
 // 샘터 메타 저장
@@ -581,6 +589,11 @@ function render() {
           keeperInp.addEventListener('change', function() {
             syncCell(samter.num, 'keeper', 0, this.value);
           });
+          keeperInp.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === 'Tab') {
+              syncCell(samter.num, 'keeper', 0, this.value);
+            }
+          });
           const countDiv = document.createElement('div');
           countDiv.className = 'ck-count'; countDiv.id = 'cc-' + samter.id;
           countDiv.textContent = '(' + memberCount + '명)';
@@ -604,13 +617,17 @@ function render() {
             updateStat();
           });
           inp.addEventListener('change', function() {
-            // 포커스 벗어날 때 해당 셀만 Sheets 동기화
+            // 포커스 벗어날 때 Sheets 동기화
             const globalIdx = ri * 10 + ci;
             syncCell(samter.num, 'member', globalIdx, this.value);
           });
           inp.addEventListener('keydown', function(e) {
             if (e.key !== 'Enter') return;
             e.preventDefault();
+            // Enter 시 현재 값 즉시 동기화
+            const globalIdx = ri * 10 + ci;
+            syncCell(samter.num, 'member', globalIdx, this.value);
+
             if (ci < 9) {
               g.querySelectorAll('input')[ci + 1]?.focus();
             } else {
