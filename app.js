@@ -124,9 +124,7 @@ async function handleLogin() {
     showApp();
     initApp();
   } catch(e) {
-    // 오류 내용을 alert로 표시 (진단용)
-    alert('로그인 실패!\n\n오류: ' + e.message + '\n\nAPI_URL: ' + API_URL.substring(0, 60));
-    errEl.textContent = '연결 오류: ' + e.message;
+    errEl.textContent = '오류: ' + e.message;
   }
 }
 
@@ -188,34 +186,34 @@ function convertSheetsOrg(districts) {
 //  - 읽기(login, getOrg): script 태그 JSONP
 // ================================================================
 
-function fireAndForget(data) {
-  // no-cors: 응답 못 읽지만 요청은 서버에 도달함
-  if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
-    data.sessionToken = SESSION_TOKEN;
-  }
-  const url = API_URL + '?payload=' + encodeURIComponent(JSON.stringify(data));
-  fetch(url, { method: 'GET', mode: 'no-cors' }).catch(() => {});
-}
-
-function apiCallScript(data) {
-  // JSONP: script 태그로 CORS 우회 (읽기 전용)
+// ================================================================
+//  API 통신 — JSONP 방식으로 통일 (CORS 완전 우회)
+//  script 태그는 CORS 제한 없이 Apps Script에 도달
+// ================================================================
+function apiCall(data) {
   if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
     data.sessionToken = SESSION_TOKEN;
   }
   return new Promise((resolve, reject) => {
-    const cbName = '__cb' + Date.now();
+    const cbName = '__cb' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const timer  = setTimeout(() => {
       delete window[cbName];
-      reject(new Error('응답 시간 초과'));
-    }, 12000);
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      reject(new Error('응답 시간 초과 (15초)'));
+    }, 15000);
 
     window[cbName] = function(json) {
       clearTimeout(timer);
       delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
       if (!json.ok && json.code === 401) {
         SESSION_TOKEN = null;
         sessionStorage.removeItem('samter_session');
-        reject(new Error('세션 만료'));
+        document.getElementById('app').style.display   = 'none';
+        document.getElementById('login').style.display = 'block';
+        reject(new Error('세션 만료. 다시 로그인하세요.'));
         return;
       }
       if (!json.ok) { reject(new Error(json.error || '오류')); return; }
@@ -227,31 +225,22 @@ function apiCallScript(data) {
       + '&payload=' + encodeURIComponent(JSON.stringify(data));
 
     const s = document.createElement('script');
+    s.id  = cbName;
     s.src = url;
     s.onerror = () => {
       clearTimeout(timer);
       delete window[cbName];
-      reject(new Error('스크립트 로드 실패 — 배포 URL 또는 권한 확인 필요'));
+      s.remove();
+      reject(new Error('네트워크 오류 — Apps Script 배포 URL/권한 확인 필요'));
     };
     document.head.appendChild(s);
-    setTimeout(() => { try { s.remove(); } catch(_) {} }, 13000);
   });
-}
-
-async function apiCall(data) {
-  const WRITE = ['saveCell','saveMeta','deleteCell','saveAtt'];
-  if (WRITE.includes(data.action)) {
-    fireAndForget(data);       // 쓰기: no-cors로 전송 (응답 없음)
-    return { success: true };
-  }
-  return apiCallScript(data);  // 읽기: JSONP
 }
 
 
 // 셀 하나를 Sheets에 저장 (실패해도 무시 — 로컬엔 이미 저장됨)
 async function syncCell(samter, type, index, value) {
   if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
-  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
   try {
     if (!value) {
       await apiCall({ action: 'deleteCell', year: currentYear,
@@ -261,21 +250,19 @@ async function syncCell(samter, type, index, value) {
                       samter, type, index: String(index), value: String(value) });
     }
   } catch(e) {
-    // 에러를 toast로 표시해서 원인 파악
-    toast('Sheets 오류: ' + e.message, 'err');
-    throw e;  // syncAllToSheets로 에러 전파
+    toast('셀 저장 오류: ' + e.message, 'err');
+    throw e;
   }
 }
 
 // 샘터 메타 저장
 async function syncMeta(samterNum, distName, distOrder, samterOrder) {
   if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
-  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
   try {
     await apiCall({ action: 'saveMeta', year: currentYear,
                     samter: samterNum, district: distName,
                     distOrder, samterOrder });
-  } catch(e) { console.warn('메타 동기화 실패:', e.message); }
+  } catch(e) { console.warn('메타 저장 실패:', e.message); }
 }
 
 // ================================================================
@@ -478,36 +465,18 @@ async function confirmSave() {
   closeSaveOverlay();
   saveCurrentToAllData();
   saveLocalOrg();
+  toast('저장 완료 ✓', 'ok');
 
-  // 즉시 alert로 상태 확인
-  alert('저장 완료\n\nSESSION_TOKEN: ' + (SESSION_TOKEN || '없음') + '\nAPI_URL: ' + API_URL.substring(0, 50));
-
-  syncAllToSheets();
+  if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
+    syncAllToSheets();
+  }
 }
 
 async function syncAllToSheets() {
   let cellCount = 0;
   toast('Sheets 동기화 중…', 'ok');
 
-  // 첫 셀 테스트 (alert로 결과 표시)
-  try {
-    const firstDist   = state[0];
-    const firstSamter = firstDist?.samters[0];
-    if (firstSamter) {
-      const result = await apiCall({
-        action: 'saveCell',
-        year:   currentYear,
-        samter: firstSamter.num,
-        type:   'keeper',
-        index:  '0',
-        value:  firstSamter.keeper || '(없음)',
-      });
-      alert('[진단] 첫 셀 저장 성공!\n샘터: ' + firstSamter.num + '\n청지기: ' + firstSamter.keeper + '\n결과: ' + JSON.stringify(result));
-    }
-  } catch(e) {
-    alert('[진단] 첫 셀 저장 실패!\n오류: ' + e.message);
-    return;
-  }
+
 
   // 전체 동기화
   try {
