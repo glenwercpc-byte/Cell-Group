@@ -13,7 +13,7 @@
 // ================================================================
 
 // ★ Apps Script 배포 URL로 교체하세요
-const API_URL     = 'https://script.google.com/macros/s/AKfycbyURNDdOrRtjq8MiO7ZcXzD_tagxH18Jad9l7asR2oSimGIf4Ak1SL0ImE5EmEkN-OR/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyURNDdOrRtjq8MiO7ZcXzD_tagxH18Jad9l7asR2oSimGIf4Ak1SL0ImE5EmEkN-OR/exec';
 const ORG_KEY     = 'samter_org_final';
 const ATT_KEY     = 'samter_attendance';
 const SAVE_PASSWORD = '4241';
@@ -372,19 +372,6 @@ function saveOrg() {
 }
 function closeSaveOverlay() {}
 async function confirmSave() { saveOrg(); }
-    return;
-  }
-  closeSaveOverlay();
-  saveCurrentToAllData();
-  saveLocalOrg();
-  toast('저장 완료 ✓', 'ok');
-
-  // Sheets에 셀 단위 전체 동기화 (백그라운드)
-  if (SESSION_TOKEN && SESSION_TOKEN !== 'local' &&
-      API_URL && !API_URL.includes('YOUR_DEPLOY_ID')) {
-    syncAllToSheets();
-  }
-}
 
 async function syncAllToSheets() {
   const targets = [];
