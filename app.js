@@ -181,35 +181,72 @@ function convertSheetsOrg(districts) {
   return result;
 }
 
+
 // ================================================================
 //  API 통신
+//  - 쓰기(saveCell 등): no-cors GET (fire-and-forget, 서버엔 도달)
+//  - 읽기(login, getOrg): script 태그 JSONP
 // ================================================================
-async function apiCall(data) {
+
+function fireAndForget(data) {
+  // no-cors: 응답 못 읽지만 요청은 서버에 도달함
   if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
     data.sessionToken = SESSION_TOKEN;
   }
-
-  // GET 방식: payload를 단순 JSON 문자열로 (이중 인코딩 없이)
-  const jsonStr = JSON.stringify(data);
-  const url = API_URL + '?payload=' + encodeURIComponent(jsonStr);
-
-  const res = await fetch(url, { method: 'GET', redirect: 'follow' });
-  const text = await res.text();   // JSON 파싱 전에 텍스트로 먼저 받음
-
-  let json;
-  try { json = JSON.parse(text); }
-  catch(e) { throw new Error('응답 파싱 실패: ' + text.substring(0, 100)); }
-
-  if (!json.ok && json.code === 401) {
-    SESSION_TOKEN = null;
-    sessionStorage.removeItem('samter_session');
-    document.getElementById('app').style.display   = 'none';
-    document.getElementById('login').style.display = 'block';
-    throw new Error('세션 만료. 다시 로그인하세요.');
-  }
-  if (!json.ok) throw new Error(json.error || '서버 오류');
-  return json.data;
+  const url = API_URL + '?payload=' + encodeURIComponent(JSON.stringify(data));
+  fetch(url, { method: 'GET', mode: 'no-cors' }).catch(() => {});
 }
+
+function apiCallScript(data) {
+  // JSONP: script 태그로 CORS 우회 (읽기 전용)
+  if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
+    data.sessionToken = SESSION_TOKEN;
+  }
+  return new Promise((resolve, reject) => {
+    const cbName = '__cb' + Date.now();
+    const timer  = setTimeout(() => {
+      delete window[cbName];
+      reject(new Error('응답 시간 초과'));
+    }, 12000);
+
+    window[cbName] = function(json) {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (!json.ok && json.code === 401) {
+        SESSION_TOKEN = null;
+        sessionStorage.removeItem('samter_session');
+        reject(new Error('세션 만료'));
+        return;
+      }
+      if (!json.ok) { reject(new Error(json.error || '오류')); return; }
+      resolve(json.data);
+    };
+
+    const url = API_URL
+      + '?callback=' + cbName
+      + '&payload=' + encodeURIComponent(JSON.stringify(data));
+
+    const s = document.createElement('script');
+    s.src = url;
+    s.onerror = () => {
+      clearTimeout(timer);
+      delete window[cbName];
+      reject(new Error('스크립트 로드 실패 — 배포 URL 또는 권한 확인 필요'));
+    };
+    document.head.appendChild(s);
+    setTimeout(() => { try { s.remove(); } catch(_) {} }, 13000);
+  });
+}
+
+async function apiCall(data) {
+  const WRITE = ['saveCell','saveMeta','deleteCell','saveAtt'];
+  if (WRITE.includes(data.action)) {
+    fireAndForget(data);       // 쓰기: no-cors로 전송 (응답 없음)
+    return { success: true };
+  }
+  return apiCallScript(data);  // 읽기: JSONP
+}
+
 
 // 셀 하나를 Sheets에 저장 (실패해도 무시 — 로컬엔 이미 저장됨)
 async function syncCell(samter, type, index, value) {
