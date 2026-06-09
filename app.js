@@ -56,13 +56,10 @@ const BASE_2026 = [
 //  초기화
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
-  SESSION_TOKEN = sessionStorage.getItem('samter_session');
-  if (SESSION_TOKEN) {
-    showApp();
-    initApp();
-  } else {
-    document.getElementById('login').style.display = 'block';
-  }
+  // 로그인 없이 바로 시작 (테스트 모드)
+  SESSION_TOKEN = 'test-no-auth';
+  showApp();
+  initApp();
 });
 
 // 앱 초기화 — Sheets 우선, 실패 시 localStorage → BASE_2026
@@ -191,9 +188,7 @@ function convertSheetsOrg(districts) {
 //  script 태그는 CORS 제한 없이 Apps Script에 도달
 // ================================================================
 function apiCall(data) {
-  if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
-    data.sessionToken = SESSION_TOKEN;
-  }
+  // 테스트 모드: 세션 토큰 없이 전송
   return new Promise((resolve, reject) => {
     const cbName = '__cb' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const timer  = setTimeout(() => {
@@ -240,7 +235,6 @@ function apiCall(data) {
 
 // 셀 하나를 Sheets에 저장 (실패해도 무시 — 로컬엔 이미 저장됨)
 async function syncCell(samter, type, index, value) {
-  if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
   try {
     if (!value) {
       await apiCall({ action: 'deleteCell', year: currentYear,
@@ -257,7 +251,6 @@ async function syncCell(samter, type, index, value) {
 
 // 샘터 메타 저장
 async function syncMeta(samterNum, distName, distOrder, samterOrder) {
-  if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
   try {
     await apiCall({ action: 'saveMeta', year: currentYear,
                     samter: samterNum, district: distName,
@@ -454,47 +447,67 @@ function closeSaveOverlay() {
 }
 
 async function confirmSave() {
-  const pw    = (document.getElementById('save-pw')?.value || '').trim();
-  const errEl = document.getElementById('save-pw-err');
-  if (pw !== SAVE_PASSWORD) {
-    if (errEl) errEl.textContent = '비밀번호가 틀렸습니다.';
-    const inp = document.getElementById('save-pw');
-    if (inp) { inp.value = ''; inp.focus(); }
-    return;
-  }
+  // 테스트 모드: 비밀번호 없이 바로 저장
   closeSaveOverlay();
   saveCurrentToAllData();
   saveLocalOrg();
-  toast('저장 완료 ✓', 'ok');
-
-  if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
-    syncAllToSheets();
-  }
+  toast('저장 중…', 'ok');
+  await syncAllToSheets();
 }
+
+// 요청 사이 딜레이 (JSONP script 태그 충돌 방지)
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function syncAllToSheets() {
   let cellCount = 0;
-  toast('Sheets 동기화 중…', 'ok');
+  let errCount  = 0;
+  toast('Sheets 동기화 시작…', 'ok');
 
-
-
-  // 전체 동기화
-  try {
-    for (let di = 0; di < state.length; di++) {
-      const dist = state[di];
-      for (let si = 0; si < dist.samters.length; si++) {
-        const samter  = dist.samters[si];
-        const members = samter.rows.flat().filter(Boolean);
-        await syncMeta(samter.num, dist.name, di, si);
-        if (samter.keeper) { await syncCell(samter.num, 'keeper', 0, samter.keeper); cellCount++; }
-        for (let idx = 0; idx < members.length; idx++) {
-          if (members[idx]) { await syncCell(samter.num, 'member', idx, members[idx]); cellCount++; }
-        }
+  // 모든 셀을 순서대로 수집
+  const tasks = [];
+  for (let di = 0; di < state.length; di++) {
+    const dist = state[di];
+    for (let si = 0; si < dist.samters.length; si++) {
+      const samter  = dist.samters[si];
+      const members = samter.rows.flat().filter(Boolean);
+      tasks.push({ action: 'saveMeta', year: currentYear,
+                   samter: samter.num, district: dist.name,
+                   distOrder: di, samterOrder: si });
+      if (samter.keeper) {
+        tasks.push({ action: 'saveCell', year: currentYear,
+                     samter: samter.num, type: 'keeper', index: '0',
+                     value: samter.keeper });
       }
+      members.forEach((m, idx) => {
+        if (m) tasks.push({ action: 'saveCell', year: currentYear,
+                             samter: samter.num, type: 'member',
+                             index: String(idx), value: m });
+      });
     }
+  }
+
+  toast('총 ' + tasks.length + '개 셀 저장 중…', 'ok');
+
+  // 하나씩 순차 처리 (200ms 간격)
+  for (let i = 0; i < tasks.length; i++) {
+    try {
+      await apiCall(tasks[i]);
+      cellCount++;
+      // 10개마다 진행상황 표시
+      if (cellCount % 10 === 0) {
+        toast(cellCount + '/' + tasks.length + ' 저장 중…', 'ok');
+      }
+    } catch(e) {
+      errCount++;
+      console.warn('셀 저장 실패:', tasks[i], e.message);
+    }
+    await delay(200);  // 200ms 간격으로 요청
+  }
+
+  if (errCount === 0) {
     toast('Sheets 동기화 완료 (' + cellCount + '개) ✓', 'ok');
-  } catch(e) {
-    toast('동기화 중단: ' + e.message, 'err');
+  } else {
+    toast('완료 ' + cellCount + '개 / 실패 ' + errCount + '개', 'err');
   }
 }
 
