@@ -188,28 +188,23 @@ function convertSheetsOrg(districts) {
 }
 
 // ================================================================
-//  API 통신 — HtmlService 방식 (CORS 자동 해결)
-//  Code.gs가 HtmlService로 반환하므로 fetch() 정상 작동
+//  API 통신
 // ================================================================
 async function apiCall(data) {
   if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
     data.sessionToken = SESSION_TOKEN;
   }
 
+  // GET 방식: payload를 단순 JSON 문자열로 (이중 인코딩 없이)
   const jsonStr = JSON.stringify(data);
   const url = API_URL + '?payload=' + encodeURIComponent(jsonStr);
 
-  const res  = await fetch(url, { method: 'GET', redirect: 'follow' });
-  const text = await res.text();
+  const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+  const text = await res.text();   // JSON 파싱 전에 텍스트로 먼저 받음
 
   let json;
-  try {
-    // HtmlService 응답은 <html>...</html> 태그 없이 순수 JSON 텍스트
-    const cleaned = text.replace(/<[^>]*>/g, '').trim();
-    json = JSON.parse(cleaned);
-  } catch(e) {
-    throw new Error('응답 파싱 실패: ' + text.substring(0, 200));
-  }
+  try { json = JSON.parse(text); }
+  catch(e) { throw new Error('응답 파싱 실패: ' + text.substring(0, 100)); }
 
   if (!json.ok && json.code === 401) {
     SESSION_TOKEN = null;
@@ -226,7 +221,6 @@ async function apiCall(data) {
 async function syncCell(samter, type, index, value) {
   if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
   if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
-  // 빈 값이면 삭제 액션, 있으면 저장
   try {
     if (!value) {
       await apiCall({ action: 'deleteCell', year: currentYear,
@@ -236,7 +230,9 @@ async function syncCell(samter, type, index, value) {
                       samter, type, index: String(index), value: String(value) });
     }
   } catch(e) {
-    console.warn('셀 동기화 실패 (로컬엔 저장됨):', e.message);
+    // 에러를 toast로 표시해서 원인 파악
+    toast('Sheets 오류: ' + e.message, 'err');
+    throw e;  // syncAllToSheets로 에러 전파
   }
 }
 
@@ -462,33 +458,46 @@ async function confirmSave() {
 
 async function syncAllToSheets() {
   let cellCount = 0;
+  toast('Sheets 동기화 중…', 'ok');
+
+  // 첫 셀만 테스트
   try {
-    toast('Sheets 동기화 중…', 'ok');
+    const firstDist   = state[0];
+    const firstSamter = firstDist?.samters[0];
+    if (firstSamter) {
+      toast('첫 셀 테스트 중: ' + firstSamter.num + '샘터 청지기…', 'ok');
+      await apiCall({
+        action: 'saveCell',
+        year:   currentYear,
+        samter: firstSamter.num,
+        type:   'keeper',
+        index:  '0',
+        value:  firstSamter.keeper || '(없음)',
+      });
+      toast('첫 셀 성공! 전체 동기화 시작…', 'ok');
+    }
+  } catch(e) {
+    toast('첫 셀 실패: ' + e.message, 'err');
+    return;
+  }
+
+  // 전체 동기화
+  try {
     for (let di = 0; di < state.length; di++) {
       const dist = state[di];
       for (let si = 0; si < dist.samters.length; si++) {
         const samter  = dist.samters[si];
         const members = samter.rows.flat().filter(Boolean);
-        // 메타 저장
         await syncMeta(samter.num, dist.name, di, si);
-        // 청지기 저장
-        if (samter.keeper) {
-          await syncCell(samter.num, 'keeper', 0, samter.keeper);
-          cellCount++;
-        }
-        // 조원 저장
+        if (samter.keeper) { await syncCell(samter.num, 'keeper', 0, samter.keeper); cellCount++; }
         for (let idx = 0; idx < members.length; idx++) {
-          if (members[idx]) {
-            await syncCell(samter.num, 'member', idx, members[idx]);
-            cellCount++;
-          }
+          if (members[idx]) { await syncCell(samter.num, 'member', idx, members[idx]); cellCount++; }
         }
       }
     }
-    toast('Sheets 동기화 완료 (' + cellCount + '개 셀) ✓', 'ok');
+    toast('Sheets 동기화 완료 (' + cellCount + '개) ✓', 'ok');
   } catch(e) {
-    toast('Sheets 동기화 실패: ' + e.message, 'err');
-    console.error('Sheets 동기화 실패:', e);
+    toast('동기화 중단: ' + e.message, 'err');
   }
 }
 
