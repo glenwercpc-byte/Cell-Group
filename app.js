@@ -56,17 +56,39 @@ const BASE_2026 = [
 //  초기화
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
-  // localStorage에 저장된 세션 토큰 복원
   SESSION_TOKEN = sessionStorage.getItem('samter_session');
   if (SESSION_TOKEN) {
     showApp();
-    loadLocalData();
-    initFromSheets();
+    initApp();
   } else {
-    // 로그인 화면 표시
     document.getElementById('login').style.display = 'block';
   }
 });
+
+// 앱 초기화 — Sheets 우선, 실패 시 localStorage → BASE_2026
+async function initApp() {
+  // 1. 일단 localStorage 로드해서 빠르게 화면 표시
+  loadLocalData();
+
+  // 2. Sheets에서 최신 데이터 로드 (세션 있을 때만)
+  if (SESSION_TOKEN && SESSION_TOKEN !== 'local' &&
+      API_URL && !API_URL.includes('YOUR_DEPLOY_ID')) {
+    try {
+      const orgRes = await apiCall({ action: 'getOrg', year: currentYear });
+      if (orgRes && orgRes.districts) {
+        const converted = convertSheetsOrg(orgRes.districts);
+        if (converted.length > 0 && converted.some(d => d.samters.length > 0)) {
+          allData[currentYear] = converted;
+          saveLocalOrg();
+          loadYear(currentYear);
+          console.log('Sheets 데이터 로드 완료');
+        }
+      }
+    } catch(e) {
+      console.warn('Sheets 로드 실패, 로컬 데이터 사용:', e.message);
+    }
+  }
+}
 
 // ================================================================
 //  로그인 / 세션
@@ -84,7 +106,7 @@ async function handleLogin() {
       sessionStorage.setItem('samter_session', 'local');
       errEl.textContent = '';
       showApp();
-      loadLocalData();
+      initApp();
     } else {
       errEl.textContent = '비밀번호가 틀렸습니다.';
     }
@@ -99,8 +121,7 @@ async function handleLogin() {
     document.getElementById('pw').value = '';
     errEl.textContent = '';
     showApp();
-    loadLocalData();
-    initFromSheets();   // 백그라운드에서 Sheets 동기화 (실패해도 무관)
+    initApp();
   } catch(e) {
     // Sheets 연결 실패 → 비밀번호가 맞으면 로컬 모드로 진입
     if (pw === '1424') {
@@ -108,7 +129,7 @@ async function handleLogin() {
       sessionStorage.setItem('samter_session', 'local');
       errEl.textContent = '';
       showApp();
-      loadLocalData();
+      initApp();
     } else {
       errEl.textContent = '비밀번호가 틀렸습니다.';
     }
@@ -131,29 +152,7 @@ function loadLocalData() {
   loadYear('2026');
 }
 
-async function initFromSheets() {
-  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
-  if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
 
-  try {
-    const orgRes = await apiCall({ action: 'getOrg', year: currentYear });
-    if (orgRes.districts && Object.keys(orgRes.districts).length) {
-      const converted = convertSheetsOrg(orgRes.districts);
-      // Sheets 데이터가 실제로 있을 때만 덮어씀
-      if (converted.length > 0 &&
-          converted.some(d => d.samters.length > 0)) {
-        allData[currentYear] = converted;
-        saveLocalOrg();
-        loadYear(currentYear);
-        console.log('Sheets 데이터 로드 완료:', converted.length + '지구');
-      } else {
-        console.log('Sheets 데이터 없음 — 로컬/기본 데이터 유지');
-      }
-    }
-  } catch(e) {
-    console.warn('Sheets 로드 실패 (로컬 데이터 사용):', e.message);
-  }
-}
 
 // Sheets getOrg 반환 형식 → allData 형식 변환
 // getOrg 반환: { '1지구': { order, samters:[{num,keeper,members[],samterOrder}] } }
@@ -452,22 +451,34 @@ async function confirmSave() {
 }
 
 async function syncAllToSheets() {
+  let cellCount = 0;
   try {
+    toast('Sheets 동기화 중…', 'ok');
     for (let di = 0; di < state.length; di++) {
       const dist = state[di];
       for (let si = 0; si < dist.samters.length; si++) {
         const samter  = dist.samters[si];
         const members = samter.rows.flat().filter(Boolean);
+        // 메타 저장
         await syncMeta(samter.num, dist.name, di, si);
-        await syncCell(samter.num, 'keeper', 0, samter.keeper);
+        // 청지기 저장
+        if (samter.keeper) {
+          await syncCell(samter.num, 'keeper', 0, samter.keeper);
+          cellCount++;
+        }
+        // 조원 저장
         for (let idx = 0; idx < members.length; idx++) {
-          await syncCell(samter.num, 'member', idx, members[idx]);
+          if (members[idx]) {
+            await syncCell(samter.num, 'member', idx, members[idx]);
+            cellCount++;
+          }
         }
       }
     }
-    toast('Google Sheets 동기화 완료 ✓', 'ok');
+    toast('Sheets 동기화 완료 (' + cellCount + '개 셀) ✓', 'ok');
   } catch(e) {
-    console.warn('Sheets 동기화 실패:', e.message);
+    toast('Sheets 동기화 실패: ' + e.message, 'err');
+    console.error('Sheets 동기화 실패:', e);
   }
 }
 
