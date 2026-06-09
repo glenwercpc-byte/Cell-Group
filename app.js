@@ -13,7 +13,7 @@
 // ================================================================
 
 // ★ Apps Script 배포 URL로 교체하세요
-const API_URL     = 'https://script.google.com/macros/s/AKfycbxyuYUXiDwgIMvb29bjFZw1DZplaOrkPfLUXp8R_r2XtDJZVFo19Ct1QFv6t7A_Wz2j/exec';
+const API_URL     = 'https://script.google.com/macros/s/AKfycbyURNDdOrRtjq8MiO7ZcXzD_tagxH18Jad9l7asR2oSimGIf4Ak1SL0ImE5EmEkN-OR/exec';
 const ORG_KEY     = 'samter_org_final';
 const ATT_KEY     = 'samter_attendance';
 const SAVE_PASSWORD = '4241';
