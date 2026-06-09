@@ -113,8 +113,9 @@ async function handleLogin() {
     return;
   }
 
-  // Google Sheets 로그인 (apiCall 사용 — GET 방식)
+  // Google Sheets 로그인
   try {
+    errEl.textContent = 'Sheets 연결 중…';
     const data = await apiCall({ action: 'login', password: pw });
     SESSION_TOKEN = data.sessionToken;
     sessionStorage.setItem('samter_session', SESSION_TOKEN);
@@ -123,16 +124,9 @@ async function handleLogin() {
     showApp();
     initApp();
   } catch(e) {
-    // Sheets 연결 실패 → 비밀번호가 맞으면 로컬 모드로 진입
-    if (pw === '1424') {
-      SESSION_TOKEN = 'local';
-      sessionStorage.setItem('samter_session', 'local');
-      errEl.textContent = '';
-      showApp();
-      initApp();
-    } else {
-      errEl.textContent = '비밀번호가 틀렸습니다.';
-    }
+    // 오류 내용을 alert로 표시 (진단용)
+    alert('로그인 실패!\n\n오류: ' + e.message + '\n\nAPI_URL: ' + API_URL.substring(0, 60));
+    errEl.textContent = '연결 오류: ' + e.message;
   }
 }
 
@@ -447,28 +441,10 @@ async function confirmSave() {
   closeSaveOverlay();
   saveCurrentToAllData();
   saveLocalOrg();
-  toast('저장 완료 ✓', 'ok');
 
-  // 진단: 조건 alert로 확인
-  const diagToken = SESSION_TOKEN || '(없음)';
-  const diagUrl   = API_URL || '(없음)';
-  const isLocal   = SESSION_TOKEN === 'local';
-  const hasUrl    = !!API_URL && !API_URL.includes('YOUR_DEPLOY_ID');
+  // 즉시 alert로 상태 확인
+  alert('저장 완료\n\nSESSION_TOKEN: ' + (SESSION_TOKEN || '없음') + '\nAPI_URL: ' + API_URL.substring(0, 50));
 
-  if (!SESSION_TOKEN) {
-    alert('[진단] 세션 토큰 없음\n로그인이 필요합니다.');
-    return;
-  }
-  if (isLocal) {
-    alert('[진단] 오프라인(local) 모드\nSheets 연결이 안 된 상태입니다.\n\n로그인 시 Sheets에서 세션을 받아야 합니다.');
-    return;
-  }
-  if (!hasUrl) {
-    alert('[진단] API_URL 미설정\napp.js의 API_URL을 확인하세요.\n현재값: ' + diagUrl);
-    return;
-  }
-
-  alert('[진단] 조건 모두 통과\n토큰: ' + diagToken.substring(0,20) + '...\nsyncAllToSheets 시작');
   syncAllToSheets();
 }
 
