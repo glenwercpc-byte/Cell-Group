@@ -13,7 +13,7 @@
 // ================================================================
 
 // ★ Apps Script 배포 URL로 교체하세요
-const API_URL     = 'https://script.google.com/macros/s/AKfycbzNhG1aTwP6AMopJ3_2aj3RENoFDGhYWrcmdznPbu5oKTucKYmQzhz72sZ-5N8-Hqyr/exec';
+const API_URL     = 'https://script.google.com/macros/s/AKfycbxyuYUXiDwgIMvb29bjFZw1DZplaOrkPfLUXp8R_r2XtDJZVFo19Ct1QFv6t7A_Wz2j/exec';
 const ORG_KEY     = 'samter_org_final';
 const ATT_KEY     = 'samter_attendance';
 const SAVE_PASSWORD = '4241';
@@ -171,36 +171,16 @@ function convertSheetsOrg(districts) {
 //  API 통신
 // ================================================================
 async function apiCall(data) {
-  // 세션 토큰 자동 첨부 (로컬 모드 제외)
   if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
     data.sessionToken = SESSION_TOKEN;
   }
-
-  // 저장 액션(데이터 큰 것)은 POST, 조회는 GET
-  const isWrite = ['saveOrg','saveAtt','login','logout'].includes(data.action);
-  let res;
-
-  if (isWrite) {
-    // POST — no-cors 없이 직접 전송 (Apps Script 웹앱은 POST 허용)
-    res = await fetch(API_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body:    JSON.stringify(data),
-      redirect: 'follow',
-    });
-  } else {
-    // GET — 짧은 조회용
-    const params = new URLSearchParams();
-    params.set('payload', JSON.stringify(data));
-    res = await fetch(API_URL + '?' + params.toString(), {
-      method:  'GET',
-      redirect: 'follow',
-    });
-  }
-
+  // 셀 단위 저장 — 데이터가 작으므로 GET 방식으로 통일
+  const params = new URLSearchParams();
+  params.set('payload', encodeURIComponent(JSON.stringify(data)));
+  const res  = await fetch(API_URL + '?' + params.toString(), {
+    method: 'GET', redirect: 'follow',
+  });
   const json = await res.json();
-
-  // 세션 만료 시 로그인 화면으로
   if (!json.ok && json.code === 401) {
     SESSION_TOKEN = null;
     sessionStorage.removeItem('samter_session');
@@ -210,6 +190,27 @@ async function apiCall(data) {
   }
   if (!json.ok) throw new Error(json.error || '서버 오류');
   return json.data;
+}
+
+// 셀 하나를 Sheets에 저장 (실패해도 무시 — 로컬엔 이미 저장됨)
+async function syncCell(samter, type, index, value) {
+  if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
+  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
+  try {
+    await apiCall({ action: 'saveCell', year: currentYear,
+                    samter, type, index: String(index), value: String(value) });
+  } catch(e) { console.warn('셀 동기화 실패:', e.message); }
+}
+
+// 샘터 메타 저장
+async function syncMeta(samterNum, distName, distOrder, samterOrder) {
+  if (!SESSION_TOKEN || SESSION_TOKEN === 'local') return;
+  if (!API_URL || API_URL.includes('YOUR_DEPLOY_ID')) return;
+  try {
+    await apiCall({ action: 'saveMeta', year: currentYear,
+                    samter: samterNum, district: distName,
+                    distOrder, samterOrder });
+  } catch(e) { console.warn('메타 동기화 실패:', e.message); }
 }
 
 // ================================================================
@@ -411,22 +412,33 @@ async function confirmSave() {
   }
   closeSaveOverlay();
   saveCurrentToAllData();
-
-  // 1. localStorage 저장 (즉시)
   saveLocalOrg();
+  toast('저장 완료 ✓', 'ok');
 
+  // Sheets에 셀 단위 전체 동기화 (백그라운드)
+  if (SESSION_TOKEN && SESSION_TOKEN !== 'local' &&
+      API_URL && !API_URL.includes('YOUR_DEPLOY_ID')) {
+    syncAllToSheets();
+  }
+}
 
-  // 2. Google Sheets 저장
+async function syncAllToSheets() {
   try {
-    const districts = allData[currentYear];
-    await apiCall({
-      action:    'saveOrg',
-      year:      currentYear,
-      districts: districts,
-    });
-    toast('Google Sheets 저장 완료 ✓', 'ok');
+    for (let di = 0; di < state.length; di++) {
+      const dist = state[di];
+      for (let si = 0; si < dist.samters.length; si++) {
+        const samter  = dist.samters[si];
+        const members = samter.rows.flat().filter(Boolean);
+        await syncMeta(samter.num, dist.name, di, si);
+        await syncCell(samter.num, 'keeper', 0, samter.keeper);
+        for (let idx = 0; idx < members.length; idx++) {
+          await syncCell(samter.num, 'member', idx, members[idx]);
+        }
+      }
+    }
+    toast('Google Sheets 동기화 완료 ✓', 'ok');
   } catch(e) {
-    toast('로컬에 저장되었습니다 ✓', 'ok');
+    console.warn('Sheets 동기화 실패:', e.message);
   }
 }
 
@@ -566,6 +578,9 @@ function render() {
             const cc  = document.getElementById('cc-' + samter.id);
             if (cc) cc.textContent = '(' + cnt + '명)';
           });
+          keeperInp.addEventListener('change', function() {
+            syncCell(samter.num, 'keeper', 0, this.value);
+          });
           const countDiv = document.createElement('div');
           countDiv.className = 'ck-count'; countDiv.id = 'cc-' + samter.id;
           countDiv.textContent = '(' + memberCount + '명)';
@@ -587,6 +602,11 @@ function render() {
             const cc  = document.getElementById('cc-' + samter.id);
             if (cc) cc.textContent = '(' + cnt + '명)';
             updateStat();
+          });
+          inp.addEventListener('change', function() {
+            // 포커스 벗어날 때 해당 셀만 Sheets 동기화
+            const globalIdx = ri * 10 + ci;
+            syncCell(samter.num, 'member', globalIdx, this.value);
           });
           inp.addEventListener('keydown', function(e) {
             if (e.key !== 'Enter') return;
