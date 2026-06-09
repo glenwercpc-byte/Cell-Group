@@ -188,58 +188,38 @@ function convertSheetsOrg(districts) {
 }
 
 // ================================================================
-//  API 통신 — JSONP 방식 (CORS 완전 우회)
-//  Apps Script 웹앱은 <script> 태그 요청엔 CORS 제한 없음
+//  API 통신 — HtmlService 방식 (CORS 자동 해결)
+//  Code.gs가 HtmlService로 반환하므로 fetch() 정상 작동
 // ================================================================
-function apiCall(data) {
+async function apiCall(data) {
   if (SESSION_TOKEN && SESSION_TOKEN !== 'local') {
     data.sessionToken = SESSION_TOKEN;
   }
 
-  return new Promise((resolve, reject) => {
-    // 고유 콜백 이름 생성
-    const cbName = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  const jsonStr = JSON.stringify(data);
+  const url = API_URL + '?payload=' + encodeURIComponent(jsonStr);
 
-    // 타임아웃 (10초)
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error('요청 시간 초과'));
-    }, 10000);
+  const res  = await fetch(url, { method: 'GET', redirect: 'follow' });
+  const text = await res.text();
 
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cbName];
-      const el = document.getElementById(cbName);
-      if (el) el.remove();
-    }
+  let json;
+  try {
+    // HtmlService 응답은 <html>...</html> 태그 없이 순수 JSON 텍스트
+    const cleaned = text.replace(/<[^>]*>/g, '').trim();
+    json = JSON.parse(cleaned);
+  } catch(e) {
+    throw new Error('응답 파싱 실패: ' + text.substring(0, 200));
+  }
 
-    // 전역 콜백 등록
-    window[cbName] = function(json) {
-      cleanup();
-      if (!json.ok && json.code === 401) {
-        SESSION_TOKEN = null;
-        sessionStorage.removeItem('samter_session');
-        document.getElementById('app').style.display   = 'none';
-        document.getElementById('login').style.display = 'block';
-        reject(new Error('세션 만료. 다시 로그인하세요.'));
-        return;
-      }
-      if (!json.ok) { reject(new Error(json.error || '서버 오류')); return; }
-      resolve(json.data);
-    };
-
-    // <script> 태그로 요청
-    const jsonStr = JSON.stringify(data);
-    const url = API_URL
-      + '?callback=' + cbName
-      + '&payload=' + encodeURIComponent(jsonStr);
-
-    const script = document.createElement('script');
-    script.id  = cbName;
-    script.src = url;
-    script.onerror = () => { cleanup(); reject(new Error('네트워크 오류')); };
-    document.head.appendChild(script);
-  });
+  if (!json.ok && json.code === 401) {
+    SESSION_TOKEN = null;
+    sessionStorage.removeItem('samter_session');
+    document.getElementById('app').style.display   = 'none';
+    document.getElementById('login').style.display = 'block';
+    throw new Error('세션 만료. 다시 로그인하세요.');
+  }
+  if (!json.ok) throw new Error(json.error || '서버 오류');
+  return json.data;
 }
 
 // 셀 하나를 Sheets에 저장 (실패해도 무시 — 로컬엔 이미 저장됨)
