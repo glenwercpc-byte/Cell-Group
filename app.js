@@ -460,35 +460,76 @@ function doExport(type){
 function exportGoogleDocs() {
   saveCurrentToAllData();
   let rows='';
+  const NS='border:1px solid #ccc;padding:5px 7px';
+  const ND='border:1px solid #ddd;padding:4px 6px';
+
   state.forEach((dist,di)=>{
     const chief=dist.samters[0]?.keeper||'-';
-    rows+='<tr style="background:#3a5a8c;color:#fff"><td colspan="2" style="padding:7px 12px;font-weight:700;border:1px solid #2a4a7c">'+dist.name+' — 지구장: '+chief+'</td></tr>';
+    // 지구 헤더 — 화면과 동일하게 샘터|청지기|지구명(지구장) 3열
+    rows+='<tr style="background:#3a5a8c;color:#fff;font-weight:700;font-size:13px">'
+      +'<td style="'+NS+';width:44px;text-align:center;border-color:#2a4a7c">샘터</td>'
+      +'<td style="'+NS+';width:100px;text-align:center;border-color:#2a4a7c">청지기</td>'
+      +'<td style="'+NS+';border-color:#2a4a7c">'+dist.name+'&nbsp;&nbsp;(지구장: '+chief+')</td>'
+      +'</tr>';
+
     dist.samters.forEach(s=>{
-      const all=s.keeper?[s.keeper,...s.rows.flat().filter(Boolean)]:s.rows.flat().filter(Boolean);
-      const cnt=all.length;
-      for(let r=0;r<Math.max(all.length,1);r+=10){
-        const chunk=all.slice(r,r+10);
+      const members=s.rows.flat().filter(Boolean);
+      const cnt=members.length+(s.keeper?1:0);
+      const rowCount=Math.ceil(Math.max(members.length,1)/10);
+
+      for(let r=0;r<Math.max(members.length,1);r+=10){
+        const chunk=members.slice(r,r+10);
         while(chunk.length<10)chunk.push('');
         rows+='<tr>';
         if(r===0){
-          rows+='<td rowspan="'+Math.ceil(Math.max(all.length,1)/10)+'" style="border:1px solid #ccc;padding:4px 6px;text-align:center;font-weight:700;background:#e8eef7;vertical-align:middle;min-width:40px">'+s.num+'<br><small style="color:#3a5a8c">('+cnt+'명)</small></td>';
-          rows+='<td rowspan="'+Math.ceil(Math.max(all.length,1)/10)+'" style="border:1px solid #ccc;padding:4px 6px;text-align:center;background:#f2f5fa;vertical-align:middle;min-width:90px">'+(s.keeper||'')+'</td>';
+          rows+='<td rowspan="'+rowCount+'" style="'+NS+';text-align:center;font-weight:700;font-size:13px;background:#e8eef7;vertical-align:middle">'+s.num+'</td>';
+          rows+='<td rowspan="'+rowCount+'" style="'+NS+';text-align:center;font-size:12px;background:#f2f5fa;vertical-align:middle">'+s.keeper+'<br><span style="color:#3a5a8c;font-size:11px">('+cnt+'명)</span></td>';
         }
-        chunk.forEach(n=>{rows+='<td style="border:1px solid #ddd;padding:4px 6px;font-size:.88em;min-width:60px">'+n+'</td>';});
+        // 조원 10칸
+        chunk.forEach(n=>{
+          rows+='<td style="'+ND+';font-size:12px;min-width:55px">'+n+'</td>';
+        });
         rows+='</tr>';
       }
+      // 샘터 사이 구분선
+      rows+='<tr><td colspan="12" style="height:3px;background:#e0e7f3;border:none;padding:0"></td></tr>';
     });
-    if(di<state.length-1)rows+='<tr><td colspan="12" style="height:8px;border:none;background:#f5f3ee"></td></tr>';
+
+    // 지구 사이 간격
+    if(di<state.length-1)
+      rows+='<tr><td colspan="12" style="height:8px;background:#f5f3ee;border:none;padding:0"></td></tr>';
   });
-  const total=state.reduce((a,d)=>a+d.samters.reduce((b,s)=>b+s.rows.flat().filter(Boolean).length+(s.keeper?1:0),0),0);
-  const html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>샘터 조직표</title>'
-    +'<style>body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;padding:24px}h1{font-family:"Nanum Myeongjo",serif;font-size:18px;color:#1a2744;text-align:center;font-weight:800;margin-bottom:4px}.sub{text-align:center;font-size:12px;color:#888;margin-bottom:14px}table{width:100%;border-collapse:collapse}.guide{background:#fff8e8;border:1px solid #f0d080;border-radius:6px;padding:10px 14px;font-size:12px;color:#6b4c00;margin-bottom:14px;line-height:1.7}.btn{display:inline-block;margin:3px 5px 0 0;padding:7px 16px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;text-decoration:none}.btn-g{background:#0f9d58}@media print{.guide,.btn-row{display:none}}</style></head><body>'
+
+  const total=state.reduce((a,d)=>a+d.samters.reduce((b,s)=>
+    b+s.rows.flat().filter(Boolean).length+(s.keeper?1:0),0),0);
+
+  const html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
+    +'<title>시카고 언약 장로교회 '+currentYear+'년 샘터 조직표</title>'
+    +'<style>'
+    +'body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;padding:20px;font-size:13px}'
+    +'h1{font-family:"Nanum Myeongjo",serif;font-size:17px;color:#1a2744;text-align:center;font-weight:800;margin-bottom:3px}'
+    +'.sub{text-align:center;font-size:11px;color:#888;margin-bottom:12px}'
+    +'table{width:100%;border-collapse:collapse;table-layout:fixed}'
+    +'.guide{background:#fff8e8;border:1px solid #f0d080;border-radius:5px;padding:8px 12px;font-size:11px;color:#6b4c00;margin-bottom:10px;line-height:1.6}'
+    +'.btn{display:inline-block;margin:3px 5px 0 0;padding:6px 14px;background:#1a2744;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:none}'
+    +'.btn-g{background:#0f9d58}'
+    +'@media print{'
+    +'.guide,.btn-row{display:none}'
+    +'body{padding:8px}'
+    +'}'
+    +'</style></head><body>'
     +'<h1>시카고 언약 장로교회 '+currentYear+'년 샘터 조직표</h1>'
     +'<p class="sub">'+state.length+'지구 · '+state.reduce((a,d)=>a+d.samters.length,0)+'샘터 · 총 '+total+'명</p>'
     +'<div class="guide"><strong>Google Docs 붙여넣기:</strong> 아래 "표 전체 선택" → 복사(Ctrl+C) → <a href="https://docs.google.com/document/create" target="_blank">Google Docs 새 문서</a> → 붙여넣기(Ctrl+V)</div>'
-    +'<div class="btn-row" style="margin-bottom:12px"><button class="btn" onclick="selectAll()">📋 표 전체 선택</button><a class="btn btn-g" href="https://docs.google.com/document/create" target="_blank">🔗 Google Docs 열기</a><button class="btn" onclick="window.print()">🖨 인쇄</button></div>'
+    +'<div class="btn-row" style="margin-bottom:10px">'
+    +'<button class="btn" onclick="sel()">📋 표 전체 선택</button>'
+    +'<a class="btn btn-g" href="https://docs.google.com/document/create" target="_blank">🔗 Google Docs 열기</a>'
+    +'<button class="btn" onclick="window.print()">🖨 인쇄</button>'
+    +'</div>'
     +'<div id="tw"><table><tbody>'+rows+'</tbody></table></div>'
-    +'<script>function selectAll(){var r=document.createRange();r.selectNodeContents(document.getElementById("tw"));var s=window.getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand("copy");alert("복사 완료!");}catch(e){alert("Ctrl+A 후 Ctrl+C로 복사하세요.");}}<\/script></body></html>';
+    +'<script>function sel(){var r=document.createRange();r.selectNodeContents(document.getElementById("tw"));var s=window.getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand("copy");alert("복사 완료! Google Docs에 붙여넣기 하세요.");}catch(e){alert("Ctrl+A 후 Ctrl+C로 복사하세요.");}}<\/script>'
+    +'</body></html>';
+
   const w=window.open('','_blank');
   if(!w){toast('팝업 차단됨','err');return;}
   w.document.write(html); w.document.close();
