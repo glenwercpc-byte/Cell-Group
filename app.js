@@ -131,13 +131,22 @@ function getMemberList(n){const s=getSamterByNum(n);if(!s)return[];const m=s.row
 function buildSamterOptions(){return'<option value="">-- 샘터 선택 --</option>'+state.flatMap(d=>d.samters.map(s=>'<option value="'+s.num+'">'+s.num+'샘터 ('+s.keeper+')</option>')).join('');}
 
 function toggleExport(){
-  // 드롭다운 메뉴 동적 생성
   const expb=document.getElementById('expb');
-  expb.innerHTML=''
-    +'<div class="export-item" onclick="doExport(\'gdocs\')"><span class="ei-icon">📄</span> 조직표 출력</div>'
-    +'<div class="export-item" onclick="doExport(\'monthly\')"><span class="ei-icon">📋</span> 월 샘터보고서</div>'
-    +'<div class="export-item" onclick="doExport(\'monthlyAll\')"><span class="ei-icon">📊</span> 월 전체 보고서</div>'
-    +'<div class="export-item" onclick="doExport(\'yearly\')"><span class="ei-icon">📅</span> 년중 출석 상황</div>';
+  // innerHTML 대신 DOM으로 생성 (따옴표 문제 방지)
+  const items=[
+    ['gdocs','📄','조직표 출력'],
+    ['monthly','📋','월 샘터보고서'],
+    ['monthlyAll','📊','월 전체 보고서'],
+    ['yearly','📅','년중 출석 상황'],
+  ];
+  expb.innerHTML='';
+  items.forEach(([t,icon,label])=>{
+    const d=document.createElement('div');
+    d.className='export-item';
+    d.innerHTML='<span class="ei-icon">'+icon+'</span> '+label;
+    d.onclick=()=>doExport(t);
+    expb.appendChild(d);
+  });
   expb.classList.toggle('hidden');
 }
 function closeExport(){const b=document.getElementById('expb');if(b)b.classList.add('hidden');}
