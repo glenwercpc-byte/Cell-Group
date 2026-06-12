@@ -141,7 +141,7 @@ function exportToGoogleDocs(){
   let rows='';
   state.forEach((dist,di)=>{
     const chief=dist.samters[0]?.keeper||'-';
-    rows+='<tr><td style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">샘터</td><td style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">청지기</td><td colspan="10" style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 10px;border:1px solid #2a4a7c;white-space:nowrap">'+dist.name+'&nbsp;&nbsp;(지구장: '+chief+')</td></tr>';
+    rows+='<tr><td style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">샘터</td><td style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">청지기</td><td colspan="10" style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 10px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">'+dist.name+'&nbsp;&nbsp;(지구장: '+chief+')</td></tr>';
     dist.samters.forEach(s=>{
       const members=s.rows.flat().filter(Boolean),cnt=members.length+(s.keeper?1:0),rCount=Math.ceil(Math.max(members.length,1)/10);
       for(let r=0;r<Math.max(members.length,1);r+=10){
@@ -156,14 +156,35 @@ function exportToGoogleDocs(){
     if(di<state.length-1)rows+='<tr><td colspan="12" style="height:5px;background:#ece8e0;border:none;padding:0"></td></tr>';
   });
   const html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>시카고 언약 장로교회 '+currentYear+'년 샘터 조직표</title>'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;padding:12px 16px;font-size:11px;color:#111}h1{font-family:"Nanum Myeongjo",serif;font-size:16px;color:#1a2744;text-align:center;font-weight:800;margin-bottom:2px}.sub{text-align:center;font-size:11px;color:#666;margin-bottom:8px}table{border-collapse:collapse;width:100%;table-layout:fixed}td{word-break:keep-all}.guide{background:#fff8e8;border:1px solid #f0d080;border-radius:4px;padding:7px 10px;font-size:11px;color:#6b4c00;margin-bottom:8px}.btn{display:inline-block;margin:0 5px 0 0;padding:5px 12px;background:#1a2744;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit;text-decoration:none}.btn-g{background:#0f9d58}@media print{.no-print{display:none!important}body{padding:5px 8px}@page{size:legal portrait;margin:8mm}}</style>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;padding:8px 10px;font-size:10px;color:#111}'
+    +'h1{font-family:"Nanum Myeongjo",serif;font-size:14px;color:#1a2744;text-align:center;font-weight:800;margin-bottom:1px}'
+    +'.sub{text-align:center;font-size:9.5px;color:#666;margin-bottom:6px}'
+    +'table{border-collapse:collapse;width:100%;table-layout:fixed}'
+    +'td{word-break:keep-all;font-size:10px}'
+    +'.btn{display:inline-block;margin:0 5px 0 0;padding:5px 14px;background:#1a2744;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit}'
+    +'@media print{'
+    +'.no-print{display:none!important}'
+    +'body{padding:4px 6px;font-size:9px}'
+    +'td{font-size:9px!important}'
+    +'@page{size:legal portrait;margin:6mm}'
+    +'}'
+    +'</style>'
     +'</head><body>'
     +'<h1>시카고 언약 장로교회 '+currentYear+'년 샘터 조직표</h1>'
     +'<p class="sub">'+state.length+'지구 &middot; '+totalS+'샘터 &middot; 총 '+total+'명</p>'
-    +'<div class="guide no-print"><strong>Google Docs 붙여넣기:</strong> 아래 "표 전체 선택" &rarr; 복사(Ctrl+C) &rarr; <a href="https://docs.google.com/document/create" target="_blank">Google Docs 새 문서</a> &rarr; 붙여넣기(Ctrl+V)</div>'
-    +'<div class="no-print" style="margin-bottom:8px"><button class="btn" onclick="sel()">📋 표 전체 선택</button><a class="btn btn-g" href="https://docs.google.com/document/create" target="_blank">🔗 Google Docs 열기</a><button class="btn" onclick="window.print()">🖨 인쇄 (Legal 세로)</button></div>'
+    +'<div class="no-print" style="margin-bottom:8px">'
+    +'<button class="btn" onclick="window.print()">🖨 인쇄</button>'
+    +'<button class="btn" style="background:#c0392b" onclick="savePDF()">📄 PDF 저장</button>'
+    +'</div>'
     +'<div id="tw"><table><tbody>'+rows+'</tbody></table></div>'
-    +'<script>function sel(){var r=document.createRange();r.selectNodeContents(document.getElementById("tw"));var s=window.getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand("copy");alert("복사 완료!");}catch(e){alert("Ctrl+A 후 Ctrl+C로 복사하세요.");}}<\/script>'
+    +'<script>'
+    +'function savePDF(){'
+    +'  alert("PDF 저장 방법:\n\n1. 아래 [인쇄] 버튼 클릭\n2. 프린터 선택에서 \'Microsoft Print to PDF\' 또는 \'Save as PDF\' 선택\n3. 저장");'
+    +'  window.print();'
+    +'}'
+    +'<\/script>'
     +'</body></html>';
   const w=window.open('','_blank');if(!w){toast('팝업 차단됨','err');return;}
   w.document.write(html);w.document.close();toast('조직표 출력 창이 열렸습니다','ok');
