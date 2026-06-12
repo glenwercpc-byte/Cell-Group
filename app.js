@@ -61,10 +61,52 @@ function toRows(members){const a=members||[],r=[];for(let i=0;i<Math.max(a.lengt
 function toggleYP(){const p=document.getElementById('yp'),opening=p.classList.contains('hidden');p.classList.toggle('hidden');if(opening){document.getElementById('yp-cur-num').textContent=currentYear;const others=Object.keys(allData).filter(y=>y!==currentYear).sort((a,b)=>b-a);const se=document.getElementById('yp-saved'),le=document.getElementById('yp-saved-list');if(!others.length){se.classList.add('hidden');}else{se.classList.remove('hidden');le.innerHTML='';others.forEach(y=>{const d=document.createElement('div');d.className='yp-saved-item';d.innerHTML='<span class="yn">'+y+'년</span><span class="yb-saved">저장됨</span>';d.onclick=()=>selectYear(String(y));le.appendChild(d);});}document.getElementById('new-year-inp').value='';document.getElementById('yp-err').textContent='';setTimeout(()=>document.getElementById('new-year-inp').focus(),60);}}
 function closeYP(){document.getElementById('yp').classList.add('hidden');}
 function submitNewYear(){const val=document.getElementById('new-year-inp').value.trim(),y=parseInt(val),err=document.getElementById('yp-err');if(!val||isNaN(y)||y<2024||y>2099){err.textContent='2024~2099 사이로 입력하세요.';return;}if(String(y)===currentYear){err.textContent='현재 연도입니다.';return;}err.textContent='';selectYear(String(y));}
-function selectYear(y){closeYP();if(y===currentYear)return;saveCurrentToAllData();if(allData[y]){loadYear(y);return;}pendingYear=y;selMode=null;document.getElementById('modal-area').innerHTML=`<div class="modal-bd"><div class="modal-box"><div class="modal-title">${y}년 조직표 만들기</div><div class="modal-sub">${currentYear}년 조직표를 기반으로 ${y}년을 시작합니다.</div><div class="modal-opts"><button class="modal-opt" id="opt-copy" onclick="pickMode('copy')"><div class="opt-t">1. 현재 인원 그대로 사용</div><div class="opt-d">${currentYear}년 명단을 복사합니다.</div></button><button class="modal-opt" id="opt-fresh" onclick="pickMode('fresh')"><div class="opt-t">2. 전면 재조정</div><div class="opt-d">구조만 유지하고 조원 명단을 비웁니다.</div></button></div><div class="modal-btns"><button class="mb-cancel" onclick="cancelModal()">취소</button><button class="mb-ok" id="mok" onclick="confirmModal()" disabled>확인</button></div></div></div>`;}
-function pickMode(m){selMode=m;document.querySelectorAll('.modal-opt').forEach(b=>b.classList.remove('sel'));document.getElementById('opt-'+m).classList.add('sel');document.getElementById('mok').disabled=false;}
+function selectYear(y){
+  closeYP();
+  if(y===currentYear) return;
+  saveCurrentToAllData();
+  if(allData[y]){ loadYear(y); return; }
+
+  // 데이터 없는 연도 선택 — 이전 연도 복사 여부 확인
+  const prev = currentYear;
+  document.getElementById('modal-area').innerHTML=`
+    <div class="modal-bd">
+      <div class="modal-box">
+        <div class="modal-title">${y}년 조직표 만들기</div>
+        <div class="modal-sub" style="font-size:.85rem;color:#444;margin-bottom:20px;line-height:1.7">
+          ${y}년 조직표 데이터가 없습니다.<br>
+          <strong>${prev}년 조직표를 복사하시겠습니까?</strong>
+        </div>
+        <div class="modal-btns" style="justify-content:center;gap:12px">
+          <button class="mb-ok" onclick="confirmCopyYear('${y}','${prev}',true)"
+            style="padding:10px 28px;font-size:.88rem">네, 복사합니다</button>
+          <button class="mb-cancel" onclick="confirmCopyYear('${y}','${prev}',false)"
+            style="padding:10px 28px;font-size:.88rem">아니요, 새로 입력합니다</button>
+          <button onclick="cancelModal()"
+            style="padding:10px 20px;background:#eee;color:#555;border:none;border-radius:6px;font-size:.88rem;cursor:pointer">취소</button>
+        </div>
+      </div>
+    </div>`;
+}
+function confirmCopyYear(y, prev, doCopy){
+  const prevData = allData[prev] || [];
+  if(doCopy){
+    allData[y] = JSON.parse(JSON.stringify(prevData));
+    toast(prev+'년 데이터를 '+y+'년으로 복사했습니다 ✓','ok');
+  } else {
+    // 빈 구조만 생성
+    allData[y] = prevData.map(d=>({
+      name: d.name,
+      samters: d.samters.map(s=>({num:s.num, keeper:'', members:[]}))
+    }));
+    toast(y+'년 새 조직표를 시작합니다','ok');
+  }
+  document.getElementById('modal-area').innerHTML='';
+  loadYear(y);
+}
+function pickMode(m){selMode=m;}
 function cancelModal(){document.getElementById('modal-area').innerHTML='';pendingYear=null;selMode=null;}
-function confirmModal(){if(!selMode||!pendingYear)return;const y=pendingYear,prev=allData[currentYear]||[];allData[y]=selMode==='copy'?JSON.parse(JSON.stringify(prev)):prev.map(d=>({name:d.name,samters:d.samters.map(s=>({num:s.num,keeper:'',members:[]}))}));document.getElementById('modal-area').innerHTML='';pendingYear=null;selMode=null;loadYear(y);toast(y+'년 조직표를 시작합니다','ok');}
+function confirmModal(){cancelModal();}
 
 function saveOrg(){saveCurrentToAllData();syncAllToSheets();}
 function markDirty(n){dirtySet.add(String(n));}
@@ -136,8 +178,8 @@ function toggleExport(){
   const items=[
     ['gdocs','📄','조직표 출력'],
     ['monthly','📋','월 샘터보고서'],
+    ['yearly','📅','샘터별 출석 상황'],
     ['monthlyAll','📊','월 전체 보고서'],
-    ['yearly','📅','년중 출석 상황'],
   ];
   expb.innerHTML='';
   items.forEach(([t,icon,label])=>{
@@ -335,7 +377,7 @@ function printMonthlyAll(){
 }
 
 function openYearlyModal(){
-  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:920px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📅 년중 샘터 출석 상황 ('+currentYear+'년)</h2><div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap"><select id="yr-samter" onchange="renderYearlyTable()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><button onclick="printYearlyReport()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button></div><div id="yearly-table-body" style="overflow-x:auto"></div></div>');
+  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:920px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📅 샘터별 출석 상황 ('+currentYear+'년)</h2><div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap"><select id="yr-samter" onchange="renderYearlyTable()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><button onclick="printYearlyReport()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button></div><div id="yearly-table-body" style="overflow-x:auto"></div></div>');
   renderYearlyTable();
 }
 function renderYearlyTable(){
