@@ -4,40 +4,38 @@ const ATT_KEY='samter_att';
 let allData={},currentYear='2026',state=[],attData={};
 let nextSid=500,pendingYear=null,selMode=null;
 const dirtySet=new Set();
-const BASE_2026=[
-  {name:'1지구',samters:[
-    {num:'11',keeper:'김건우(완상)',members:['고승남(영옥)','김영옥','김명희(영자)','김무웅(명자)','김오화','김정순','박혜자','박영욱(이영일)','박창만(정수)','송혜주','이경자','이보원','이순자','이인옥','이정우(은선)','이Connie','정해일(영숙)','허명희','홍인기(순원)']},
-    {num:'12',keeper:'정찬경(순옥)',members:['김진구(숙자)','박재선(승숙)','유홍기(윤옥)','이경희(한용)','이금성(봉희)','이기상(영례)','이인기(분양)','이종우(문자)','최봉덕']},
-    {num:'13',keeper:'이신민 목사(청년)',members:['김성은','김인중','박지원','신정수','신예송','윤율','하경원','홍성준(김하은)']},
-  ]},
-  {name:'2지구',samters:[
-    {num:'21',keeper:'임채석(계원)',members:['권도영','김기수(강애란)','김재영(순영)','김태원','김연화','박준환(숙자)','박태수(윤자)','신석균(송자)','임재일(경득)','천용철','최두식(순자)','황인철(명숙)']},
-    {num:'22',keeper:'윤자명(민자)',members:['강혜영','김동진(정숙)','노은님','송정민(선)','심정옥','여선희','이규호(현순)','이진방(숙자)','이춘강','장윤일','채경주','최홍렬(금선)','하재관(영)','현종환(금수)','황산성']},
-    {num:'23',keeper:'송정은(심윤문)',members:['강철희(수정)','고유심','김미영','김성민(이의정)','김영식(명심)','김정오(수진)','김Sara','김태봉(정아)','김형률(박신영)','노동기','박정인(주현)','서인호(재경)','설재두','설창욱','윤준용(순희)','최은경','최하늘','하재원(정우)']},
-  ]},
-  {name:'3지구',samters:[
-    {num:'31',keeper:'공길봉(명심)',members:['김문주','김한영(화자)','문준숙','백경환(해나)','서성규(선영)','심상호(은영)','심윤조(경화)','윤정호(순임)','이근후(신자)','이병기(혜숙)','조옥자']},
-    {num:'32',keeper:'김미경',members:['김정한','김복님','김옥경','김춘경','김춘매','김혜경','박애경','서조연','안연숙','이두리','이미자','이조문','이혜자','한지영']},
-    {num:'33',keeper:'이윤종(남이)',members:['강위기','강성혜','강효숙','김금자','김동호','김명진(선희)','박양숙','송성례','손영숙','이명자','이완심','임덕근','장춘근','홍영자']},
-  ]},
-  {name:'4지구',samters:[
-    {num:'41',keeper:'홍기성(현자)',members:['구태회(석순)','김선혜','김우일(영회)','송세훈(정숙)','안경찬(임춘)','영앤드류(베티)','이무영(선희)','이재욱(춘자)','장명무(명숙)','최준택(영숙)','한상철(애경)','홍길봉(순인)']},
-    {num:'42',keeper:'김부웅(명옥)',members:['강상수(박그레이스)','권효섭(정희)','김건국(혜숙)','김영숙','김용규(선영)','김요한(미화)','박순길','서용재(옥주)','서정률(연실)','송영심(명우)','이석기(은령)','정차곤(영애)','채지원','장진술(경자)','전성익(복순)','주동린']},
-    {num:'43',keeper:'황광연(은주)',members:['김귀남(창화)','김미희(홍섭)','김병식(희숙)','김숙인','김승주','김완수(주희)','박용병(현주)','변지웅(군희)','이샤론','이인석(숙화)','전상우(선희)','정해자','최규일(은영)','최대식(옥현)']},
-  ]},
-];
+const BASE_2026=[];  // 샘플 데이터 제거 — Sheets에서 로드
 
 window.addEventListener('DOMContentLoaded',async()=>{
   try{const a=localStorage.getItem(ATT_KEY);if(a)attData=JSON.parse(a);}catch(e){}
-  allData['2026']=BASE_2026;
-  loadYear('2026');
+
+  // 로딩 표시
+  const tb=document.getElementById('tbody');
+  if(tb){
+    tb.innerHTML='<tr><td colspan="3" style="padding:30px;text-align:center;color:#888;font-size:.9rem">⏳ Google Sheets에서 데이터를 불러오는 중...</td></tr>';
+  }
+
   try{
     const res=await apiCall({action:'getOrg',year:'2026'});
     if(res&&res.districts&&Object.keys(res.districts).length>0){
       const c=cvtOrg(res.districts);
-      if(c.length>0&&c.some(d=>d.samters.length>0)){allData['2026']=c;loadYear('2026');toast('최신 데이터 로드 완료 ✓','ok');}
+      if(c.length>0&&c.some(d=>d.samters.length>0)){
+        allData['2026']=c;
+        loadYear('2026');
+        toast('데이터 로드 완료 ✓','ok');
+      } else {
+        loadYear('2026');
+        toast('Sheets에 데이터가 없습니다. 샘터를 추가해 주세요.','ok');
+      }
+    } else {
+      loadYear('2026');
+      toast('Sheets에 데이터가 없습니다. 샘터를 추가해 주세요.','ok');
     }
-  }catch(e){console.log('Sheets 로드 실패, 기본 데이터 사용');}
+  }catch(e){
+    allData['2026']=BASE_2026;
+    loadYear('2026');
+    toast('Sheets 연결 실패: '+e.message,'err');
+  }
 });
 
 function apiCall(data){
