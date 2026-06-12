@@ -79,11 +79,11 @@ function selectYear(y){
         </div>
         <div class="modal-btns" style="justify-content:center;gap:12px">
           <button class="mb-ok" onclick="confirmCopyYear('${y}','${prev}',true)"
-            style="padding:10px 28px;font-size:.88rem">네, 복사합니다</button>
+            style="padding:10px 28px;font-size:.88rem">Yes, Copy Please</button>
           <button class="mb-cancel" onclick="confirmCopyYear('${y}','${prev}',false)"
-            style="padding:10px 28px;font-size:.88rem">아니요, 새로 입력합니다</button>
+            style="padding:10px 28px;font-size:.88rem">No, New Entry</button>
           <button onclick="cancelModal()"
-            style="padding:10px 20px;background:#eee;color:#555;border:none;border-radius:6px;font-size:.88rem;cursor:pointer">취소</button>
+            style="padding:10px 20px;background:#eee;color:#555;border:none;border-radius:6px;font-size:.88rem;cursor:pointer">Cancel</button>
         </div>
       </div>
     </div>`;
@@ -92,14 +92,14 @@ function confirmCopyYear(y, prev, doCopy){
   const prevData = allData[prev] || [];
   if(doCopy){
     allData[y] = JSON.parse(JSON.stringify(prevData));
-    toast(prev+'년 데이터를 '+y+'년으로 복사했습니다 ✓','ok');
+    toast(y+'년: '+prev+'년 데이터 복사 완료 ✓','ok');
   } else {
     // 빈 구조만 생성
     allData[y] = prevData.map(d=>({
       name: d.name,
       samters: d.samters.map(s=>({num:s.num, keeper:'', members:[]}))
     }));
-    toast(y+'년 새 조직표를 시작합니다','ok');
+    toast(y+'년 새 조직표 시작','ok');
   }
   document.getElementById('modal-area').innerHTML='';
   loadYear(y);
