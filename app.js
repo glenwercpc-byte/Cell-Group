@@ -93,8 +93,8 @@ function render(){
     const hdr=document.createElement('tr');hdr.className='r-dh';
     const tn=document.createElement('td');tn.style.cssText='width:44px;text-align:center;border-right:2px solid rgba(255,255,255,.28)';tn.textContent='샘터';hdr.appendChild(tn);
     const tk=document.createElement('td');tk.style.cssText='width:100px;text-align:center;border-right:2px solid rgba(255,255,255,.28)';tk.textContent='청지기';hdr.appendChild(tk);
-    const tt=document.createElement('td');tt.style.cssText='text-align:left;padding:0 12px';
-    const ni=document.createElement('input');ni.value=dist.name;ni.style.cssText='background:transparent;border:none;color:#fff;font-weight:700;font-size:.82rem;padding:0;font-family:inherit;width:46px;text-align:left;outline:none';ni.addEventListener('input',()=>{dist.name=ni.value;});tt.appendChild(ni);
+    const tt=document.createElement('td');tt.style.cssText='text-align:center;padding:0 12px';
+    const ni=document.createElement('input');ni.value=dist.name;ni.style.cssText='background:transparent;border:none;color:#fff;font-weight:700;font-size:.82rem;padding:0;font-family:inherit;width:46px;text-align:center;outline:none';ni.addEventListener('input',()=>{dist.name=ni.value;});tt.appendChild(ni);
     const cs=document.createElement('span');cs.style.cssText='font-size:.78rem;color:rgba(255,255,255,.9)';cs.innerHTML='&nbsp;(지구장:&nbsp;<strong id="chief-'+dist.id+'">'+chief+'</strong>)';tt.appendChild(cs);
     if(!dist.samters.length){const del=document.createElement('button');del.textContent='✕';del.style.cssText='margin-left:10px;background:rgba(255,80,80,.25);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.65rem;cursor:pointer';del.onclick=e=>{e.stopPropagation();state.splice(state.indexOf(dist),1);render();toast(dist.name+' 삭제됨','ok');};tt.appendChild(del);}
     hdr.appendChild(tt);tb.appendChild(hdr);
