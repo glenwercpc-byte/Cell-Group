@@ -232,7 +232,7 @@ function openMonthlyAllModal(){
   openFullModal(
     '<div style="background:#fff;border-radius:12px;width:100%;max-width:860px;padding:28px 24px 24px;position:relative;margin:auto">'
     +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
-    +'<h2 style="font-family:'Nanum Myeongjo',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📊 월 전체 보고서</h2>'
+    +'<h2 style="font-family:Nanum Myeongjo,serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📊 월 전체 보고서</h2>'
     +'<div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">'
     +'<select id="mar-month" onchange="renderMonthlyAll()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select>'
     +'<button onclick="printMonthlyAll()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button>'
