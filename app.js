@@ -130,9 +130,18 @@ function getDistrictChief(n){for(const d of state){if(d.samters.find(s=>s.num===
 function getMemberList(n){const s=getSamterByNum(n);if(!s)return[];const m=s.rows.flat().filter(Boolean);return(s.keeper&&!m.includes(s.keeper))?[s.keeper,...m]:m;}
 function buildSamterOptions(){return'<option value="">-- 샘터 선택 --</option>'+state.flatMap(d=>d.samters.map(s=>'<option value="'+s.num+'">'+s.num+'샘터 ('+s.keeper+')</option>')).join('');}
 
-function toggleExport(){document.getElementById('expb').classList.toggle('hidden');}
+function toggleExport(){
+  // 드롭다운 메뉴 동적 생성
+  const expb=document.getElementById('expb');
+  expb.innerHTML=''
+    +'<div class="export-item" onclick="doExport(\'gdocs\')"><span class="ei-icon">📄</span> 조직표 출력</div>'
+    +'<div class="export-item" onclick="doExport(\'monthly\')"><span class="ei-icon">📋</span> 월 샘터보고서</div>'
+    +'<div class="export-item" onclick="doExport(\'monthlyAll\')"><span class="ei-icon">📊</span> 월 전체 보고서</div>'
+    +'<div class="export-item" onclick="doExport(\'yearly\')"><span class="ei-icon">📅</span> 년중 출석 상황</div>';
+  expb.classList.toggle('hidden');
+}
 function closeExport(){const b=document.getElementById('expb');if(b)b.classList.add('hidden');}
-function doExport(t){closeExport();if(t==='gdocs')exportToGoogleDocs();if(t==='monthly')openMonthlyModal();if(t==='yearly')openYearlyModal();}
+function doExport(t){closeExport();if(t==='gdocs')exportToGoogleDocs();if(t==='monthly')openMonthlyModal();if(t==='monthlyAll')openMonthlyAllModal();if(t==='yearly')openYearlyModal();}
 
 function exportToGoogleDocs(){
   saveCurrentToAllData();
@@ -141,7 +150,7 @@ function exportToGoogleDocs(){
   let rows='';
   state.forEach((dist,di)=>{
     const chief=dist.samters[0]?.keeper||'-';
-    rows+='<tr><td style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">샘터</td><td style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">청지기</td><td colspan="10" style="background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:5px 10px;border:1px solid #2a4a7c;white-space:nowrap;text-align:center">'+dist.name+'&nbsp;&nbsp;(지구장: '+chief+')</td></tr>';
+    rows+='<tr><td style="background:#e8eef7;color:#111;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #bbb;white-space:nowrap;text-align:center">샘터</td><td style="background:#e8eef7;color:#111;font-weight:700;font-size:12px;padding:5px 6px;border:1px solid #bbb;white-space:nowrap;text-align:center">청지기</td><td colspan="10" style="background:#e8eef7;color:#111;font-weight:700;font-size:12px;padding:5px 10px;border:1px solid #bbb;white-space:nowrap;text-align:center">'+dist.name+'&nbsp;&nbsp;(지구장: '+chief+')</td></tr>';
     dist.samters.forEach(s=>{
       const members=s.rows.flat().filter(Boolean),cnt=members.length+(s.keeper?1:0),rCount=Math.ceil(Math.max(members.length,1)/10);
       for(let r=0;r<Math.max(members.length,1);r+=10){
@@ -216,6 +225,106 @@ function printMonthlyReport(){
   const sNum=document.getElementById('mr-samter').value,mon=document.getElementById('mr-month').value,date=document.getElementById('mr-date').value,place=document.getElementById('mr-place').value;
   const w=window.open('','_blank');w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>'+sNum+'샘터 '+mon+'월 보고서</title><style>body{font-family:"Noto Sans KR",sans-serif;padding:20px;font-size:12px}h2{font-family:"Nanum Myeongjo",serif;color:#1a2744;margin-bottom:8px}@media print{button{display:none}}</style></head><body><h2>'+currentYear+'년 시카고 언약장로교회 말씀의 샘터부 보고서</h2><p style="font-size:11px;color:#888;margin-bottom:8px">모임일시: '+(date||'　　')+' &nbsp; 모임장소: '+(place||'　　')+'</p>'+body.innerHTML+'<p style="font-size:10px;color:#888;margin-top:12px">보고서 제출은 본당 예배실 Lobby 책장위에 있는 각 지구함에 넣어 주세요.</p><script>window.onload=function(){window.print();}<\/script></body></html>');w.document.close();
 }
+
+// ── 월 전체 보고서 (지구별 결석자 명단) ─────────────────────────
+function openMonthlyAllModal(){
+  const mOpts=[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>'<option value="'+m+'">'+m+'월</option>').join('');
+  openFullModal(
+    '<div style="background:#fff;border-radius:12px;width:100%;max-width:860px;padding:28px 24px 24px;position:relative;margin:auto">'
+    +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
+    +'<h2 style="font-family:'Nanum Myeongjo',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📊 월 전체 보고서</h2>'
+    +'<div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">'
+    +'<select id="mar-month" onchange="renderMonthlyAll()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select>'
+    +'<button onclick="printMonthlyAll()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button>'
+    +'<button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button>'
+    +'</div>'
+    +'<div id="monthly-all-body" style="overflow-y:auto;max-height:60vh"></div>'
+    +'</div>'
+  );
+  document.getElementById('mar-month').value = new Date().getMonth()+1;
+  renderMonthlyAll();
+}
+
+function renderMonthlyAll(){
+  const mon = document.getElementById('mar-month')?.value;
+  const body = document.getElementById('monthly-all-body');
+  if(!mon||!body) return;
+
+  let html = '';
+  state.forEach(dist => {
+    let distHtml = '';
+    dist.samters.forEach(s => {
+      const members = getMemberList(s.num);
+      if(!members.length) return;
+      const saved = attData[currentYear]?.[s.num]?.[mon] || {};
+      // 결석자만 추출
+      const absentees = members.filter(m => {
+        const v = saved.hasOwnProperty(m) ? saved[m] : 'O';
+        return v === 'X';
+      });
+      const attCount = members.filter(m => (saved.hasOwnProperty(m)?saved[m]:'O')==='O').length;
+      const rate = Math.round(attCount/members.length*100);
+
+      distHtml += '<tr>'
+        +'<td style="border:1px solid #ddd;padding:5px 8px;font-weight:700;text-align:center;background:#f2f5fa;white-space:nowrap">'+s.num+'</td>'
+        +'<td style="border:1px solid #ddd;padding:5px 8px;white-space:nowrap">'+s.keeper+'</td>'
+        +'<td style="border:1px solid #ddd;padding:5px 8px;text-align:center">'+members.length+'</td>'
+        +'<td style="border:1px solid #ddd;padding:5px 8px;text-align:center;color:#2d6a4f;font-weight:700">'+attCount+'</td>'
+        +'<td style="border:1px solid #ddd;padding:5px 8px;text-align:center;color:'+(absentees.length>0?'#c0392b':'#2d6a4f')+';font-weight:700">'+absentees.length+'</td>'
+        +'<td style="border:1px solid #ddd;padding:5px 8px;text-align:center">'+rate+'%</td>'
+        +'<td style="border:1px solid #ddd;padding:5px 8px;font-size:.82rem">'
+        +(absentees.length > 0
+          ? absentees.map(name => {
+              const reason = saved[name+'_reason']||'';
+              return '<span style="display:inline-block;margin:1px 4px 1px 0;background:#fff0f0;border:1px solid #f5c6c6;border-radius:3px;padding:1px 6px;font-size:.78rem">'
+                +name+(reason?'<span style="color:#888;font-size:.72rem"> ('+reason+')</span>':'')+'</span>';
+            }).join('')
+          : '<span style="color:#2d6a4f;font-size:.78rem">결석자 없음</span>')
+        +'</td>'
+        +'</tr>';
+    });
+
+    if(!distHtml) return;
+    const chief = dist.samters[0]?.keeper||'-';
+    html += '<div style="margin-bottom:16px">'
+      +'<div style="background:#3a5a8c;color:#fff;font-weight:700;font-size:.82rem;padding:7px 12px;border-radius:4px 4px 0 0">'
+      +dist.name+'&nbsp;&nbsp;(지구장: '+chief+')'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+      +'<thead><tr style="background:#e8edf7;font-size:.76rem;color:#1a2744">'
+      +'<th style="border:1px solid #ddd;padding:5px 8px;text-align:center">샘터</th>'
+      +'<th style="border:1px solid #ddd;padding:5px 8px;text-align:center">청지기</th>'
+      +'<th style="border:1px solid #ddd;padding:5px 8px;text-align:center">총원</th>'
+      +'<th style="border:1px solid #ddd;padding:5px 8px;text-align:center">출석</th>'
+      +'<th style="border:1px solid #ddd;padding:5px 8px;text-align:center">결석</th>'
+      +'<th style="border:1px solid #ddd;padding:5px 8px;text-align:center">출석률</th>'
+      +'<th style="border:1px solid #ddd;padding:5px 8px;text-align:center">결석자 (사유)</th>'
+      +'</tr></thead>'
+      +'<tbody>'+distHtml+'</tbody>'
+      +'</table>'
+      +'</div>';
+  });
+
+  if(!html) html = '<p style="color:#888;padding:20px;text-align:center">'+mon+'월 출석 데이터가 없습니다.<br>먼저 월 샘터보고서에서 출석을 입력해 주세요.</p>';
+  body.innerHTML = html;
+}
+
+function printMonthlyAll(){
+  const mon = document.getElementById('mar-month')?.value;
+  const body = document.getElementById('monthly-all-body');
+  if(!body) return;
+  const w = window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
+    +'<title>'+currentYear+'년 '+mon+'월 전체 보고서</title>'
+    +'<style>body{font-family:"Noto Sans KR",sans-serif;padding:16px;font-size:11px}h2{font-family:"Nanum Myeongjo",serif;color:#1a2744;margin-bottom:8px}table{width:100%;border-collapse:collapse;margin-bottom:14px}td,th{border:1px solid #bbb;padding:4px 7px;font-size:11px}.dist-hdr{background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:6px 10px;margin-bottom:0}@media print{button{display:none}}</style>'
+    +'</head><body>'
+    +'<h2>시카고 언약장로교회 '+currentYear+'년 '+mon+'월 샘터 전체 결석 현황</h2>'
+    +body.innerHTML
+    +'<script>window.onload=function(){window.print();}<\/script>'
+    +'</body></html>');
+  w.document.close();
+}
+
 function openYearlyModal(){
   openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:920px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📅 년중 샘터 출석 상황 ('+currentYear+'년)</h2><div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap"><select id="yr-samter" onchange="renderYearlyTable()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><button onclick="printYearlyReport()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button></div><div id="yearly-table-body" style="overflow-x:auto"></div></div>');
   renderYearlyTable();
