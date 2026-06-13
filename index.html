@@ -204,10 +204,10 @@ table{width:100%;border-collapse:collapse}
             <label style="margin-bottom:0">샘터 번호 입력</label>
             <button onclick="closeDp()" style="background:none;border:none;font-size:1rem;color:#888;cursor:pointer;padding:0 2px;line-height:1">✕</button>
           </div>
-          <input type="text" id="si" placeholder="예) 14" maxlength="3"
+          <input type="text" id="si" placeholder="예) 114" maxlength="3"
                  oninput="document.getElementById('dp-err').textContent=''"
                  onkeydown="if(event.key==='Enter')doAddSamter()">
-          <div class="dp-hint">첫자리=지구, 다음 두자리=샘터 (예: 101, 212)</div>
+          <div class="dp-hint">첫자리=지구 + 샘터번호 (예: 114 → 1지구 14샘터)</div>
           <div class="dp-err" id="dp-err"></div>
           <div class="dp-btns">
             <button class="db-ok" onclick="doAddSamter()">추가</button>
