@@ -202,20 +202,25 @@ function render(){
         const tr=document.createElement('tr');tr.className='r-s';
         if(ri===0){
           const nTd=document.createElement('td');nTd.className='cn';nTd.rowSpan=rs;const nI=document.createElement('input');nI.value=samter.num;nI.placeholder='번호';nI.style.cssText='width:100%;border:none;background:transparent;text-align:center;font-weight:700;font-size:.85rem;color:var(--navy);padding:4px 2px;outline:none;font-family:inherit';nI.addEventListener('input',()=>{samter.num=nI.value;markDirty(nI.value);});nTd.appendChild(nI);tr.appendChild(nTd);
-          const kTd=document.createElement('td');kTd.className='ck';kTd.rowSpan=rs;const kI=document.createElement('input');kI.value=samter.keeper;kI.placeholder='청지기';kI.id='kp-'+samter.id;kI.style.cssText='width:100%;border:none;background:transparent;text-align:center;font-size:.76rem;padding:2px;display:block;outline:none;font-family:inherit';
+          const kTd=document.createElement('td');kTd.className='ck';kTd.rowSpan=rs;
+          // 새로 추가된 샘터(청지기·조원 모두 비어있음)에만 X 취소 버튼 표시
+          const isNew=!samter.keeper && samter.rows.flat().filter(Boolean).length===0;
+          if(isNew){
+            const xBtn=document.createElement('button');
+            xBtn.textContent='✕';
+            xBtn.title=samter.num+'샘터 취소';
+            xBtn.style.cssText='position:absolute;top:2px;right:2px;background:none;border:none;color:#c0392b;font-size:.75rem;cursor:pointer;padding:0;line-height:1';
+            xBtn.onclick=()=>{
+              dist.samters.splice(dist.samters.indexOf(samter),1);
+              render();toast(samter.num+'샘터 취소됨','ok');
+            };
+            kTd.style.position='relative';
+            kTd.appendChild(xBtn);
+          }
+          const kI=document.createElement('input');kI.value=samter.keeper;kI.placeholder='청지기';kI.id='kp-'+samter.id;kI.style.cssText='width:100%;border:none;background:transparent;text-align:center;font-size:.76rem;padding:2px;display:block;outline:none;font-family:inherit';
           kI.addEventListener('input',()=>{samter.keeper=kI.value;if(si===0){const el=document.getElementById('chief-'+dist.id);if(el)el.textContent=kI.value||'-';}const c2=samter.rows.flat().filter(Boolean).length+(kI.value?1:0);const cc=document.getElementById('cc-'+samter.id);if(cc)cc.textContent='('+c2+'명)';markDirty(samter.num);});
           const cc=document.createElement('div');cc.className='ck-count';cc.id='cc-'+samter.id;cc.textContent='('+cnt+'명)';
-          // 샘터 삭제 버튼
-          const delBtn=document.createElement('button');
-          delBtn.textContent='✕';
-          delBtn.title='이 샘터 삭제';
-          delBtn.style.cssText='margin-top:4px;background:rgba(192,57,43,.12);color:#c0392b;border:1px solid rgba(192,57,43,.25);border-radius:4px;width:100%;font-size:.68rem;padding:2px 0;cursor:pointer;font-family:inherit';
-          delBtn.onclick=()=>{
-            if(!confirm(samter.num+'샘터를 삭제하시겠습니까?\n(조원 '+cnt+'명 포함)'))return;
-            dist.samters.splice(dist.samters.indexOf(samter),1);
-            render();toast(samter.num+'샘터 삭제됨','ok');
-          };
-          kTd.appendChild(kI);kTd.appendChild(cc);kTd.appendChild(delBtn);tr.appendChild(kTd);
+          kTd.appendChild(kI);kTd.appendChild(cc);tr.appendChild(kTd);
         }
         const cmTd=document.createElement('td');cmTd.className='cm';const g=document.createElement('div');g.className='mg';g.id='g-'+samter.id+'-'+ri;
         row.forEach((v,ci)=>{
