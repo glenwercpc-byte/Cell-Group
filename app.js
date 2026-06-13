@@ -39,12 +39,42 @@ window.addEventListener('DOMContentLoaded',async()=>{
 });
 
 function apiCall(data){
+  // fetch 먼저 시도 (모바일 포함 모든 환경), 실패 시 JSONP
+  return fetchCall(data).catch(()=>jsonpCall(data));
+}
+
+async function fetchCall(data){
+  const url=API_URL+'?payload='+encodeURIComponent(JSON.stringify(data));
+  const res=await fetch(url,{method:'GET',mode:'cors'});
+  const text=await res.text();
+  // JSONP 응답 형태면 콜백 부분 제거
+  const clean=text.replace(/^[^(]+\(/, '').replace(/\)\s*;?\s*$/, '').trim();
+  const json=JSON.parse(clean);
+  if(!json.ok) throw new Error(json.error||'오류');
+  return json.data;
+}
+
+function jsonpCall(data){
   return new Promise((resolve,reject)=>{
     const cb='__cb'+Date.now()+'_'+Math.floor(Math.random()*9999);
-    const timer=setTimeout(()=>{delete window[cb];document.getElementById(cb)?.remove();reject(new Error('시간 초과'));},15000);
-    window[cb]=function(json){clearTimeout(timer);delete window[cb];document.getElementById(cb)?.remove();if(!json.ok){reject(new Error(json.error||'오류'));return;}resolve(json.data);};
-    const s=document.createElement('script');s.id=cb;s.src=API_URL+'?callback='+cb+'&payload='+encodeURIComponent(JSON.stringify(data));
-    s.onerror=()=>{clearTimeout(timer);delete window[cb];s.remove();reject(new Error('네트워크 오류'));};
+    const timer=setTimeout(()=>{
+      delete window[cb];
+      const s=document.getElementById(cb);if(s)s.remove();
+      reject(new Error('시간 초과'));
+    },15000);
+    window[cb]=function(json){
+      clearTimeout(timer);delete window[cb];
+      const s=document.getElementById(cb);if(s)s.remove();
+      if(!json.ok){reject(new Error(json.error||'오류'));return;}
+      resolve(json.data);
+    };
+    const url=API_URL+'?callback='+cb+'&payload='+encodeURIComponent(JSON.stringify(data));
+    const s=document.createElement('script');
+    s.id=cb;s.src=url;
+    s.onerror=()=>{
+      clearTimeout(timer);delete window[cb];s.remove();
+      reject(new Error('네트워크 오류'));
+    };
     document.head.appendChild(s);
   });
 }
