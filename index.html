@@ -200,14 +200,16 @@ table{width:100%;border-collapse:collapse}
       <div class="dp-wrap" id="dpw">
         <button class="btn-samt" onclick="toggleDp()">＋ 샘터 추가</button>
         <div class="dp-box hidden" id="dpb">
-          <label>샘터 번호 입력</label>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <label style="margin-bottom:0">샘터 번호 입력</label>
+            <button onclick="closeDp()" style="background:none;border:none;font-size:1rem;color:#888;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+          </div>
           <input type="text" id="si" placeholder="예) 14" maxlength="3"
                  oninput="document.getElementById('dp-err').textContent=''"
                  onkeydown="if(event.key==='Enter')doAddSamter()">
           <div class="dp-hint">앞자리=지구, 뒷자리=순번</div>
           <div class="dp-err" id="dp-err"></div>
           <div class="dp-btns">
-            <button class="db-cancel" onclick="closeDp()">취소</button>
             <button class="db-ok" onclick="doAddSamter()">추가</button>
           </div>
         </div>
