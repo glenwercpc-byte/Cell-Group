@@ -153,9 +153,33 @@ async function syncAllToSheets(){
 }
 
 function addDistrict(){const n=state.length+1;state.push({id:Date.now(),name:n+'지구',samters:[]});render();toast(n+'지구 추가됨','ok');}
-function toggleDp(){const b=document.getElementById('dpb');b.classList.toggle('hidden');if(!b.classList.contains('hidden')){document.getElementById('si').value='';document.getElementById('dp-err').textContent='';setTimeout(()=>document.getElementById('si').focus(),40);}}
+function toggleDp(){
+  const b=document.getElementById('dpb');
+  b.classList.toggle('hidden');
+  if(!b.classList.contains('hidden')){
+    document.getElementById('si').value='';
+    document.getElementById('dp-err').textContent='';
+    setTimeout(()=>document.getElementById('si').focus(),40);
+  }
+}
 function closeDp(){document.getElementById('dpb').classList.add('hidden');}
-function doAddSamter(){const val=document.getElementById('si').value.trim(),err=document.getElementById('dp-err');if(!val||isNaN(Number(val))){err.textContent='숫자를 입력하세요 (예: 14)';return;}const sNum=val,dNum=parseInt(val[0]),dist=state.find(d=>d.name===dNum+'지구');if(!dist){err.textContent=dNum+'지구가 없습니다.';return;}if(dist.samters.find(s=>s.num===sNum)){err.textContent=sNum+'샘터가 이미 있습니다.';return;}const ns={id:nextSid++,num:sNum,keeper:'',rows:[['','','','','','','','','','']]};const idx=dist.samters.findIndex(s=>parseInt(s.num)>parseInt(sNum));if(idx===-1)dist.samters.push(ns);else dist.samters.splice(idx,0,ns);closeDp();render();toast(sNum+'샘터 추가됨','ok');}
+function doAddSamter(){
+  const val=document.getElementById('si').value.trim();
+  const err=document.getElementById('dp-err');
+  if(!val||isNaN(Number(val))||val.length<2){err.textContent='숫자를 입력하세요 (예: 114 → 1지구 14샘터)';return;}
+  // 첫자리=지구, 나머지=샘터번호
+  const dNum=parseInt(val[0]);
+  const sNum=val.slice(1);  // 114 → '14'
+  if(!sNum||isNaN(Number(sNum))){err.textContent='올바른 번호를 입력하세요 (예: 114)';return;}
+  const dist=state.find(d=>d.name===dNum+'지구');
+  if(!dist){err.textContent=dNum+'지구가 없습니다.';return;}
+  if(dist.samters.find(s=>s.num===sNum)){err.textContent=sNum+'샘터가 이미 있습니다.';return;}
+  const ns={id:nextSid++,num:sNum,keeper:'',rows:[['','','','','','','','','','']]};
+  const idx=dist.samters.findIndex(s=>parseInt(s.num)>parseInt(sNum));
+  if(idx===-1)dist.samters.push(ns);else dist.samters.splice(idx,0,ns);
+  closeDp();render();
+  toast(dNum+'지구 '+sNum+'샘터 추가됨','ok');
+}
 
 function render(){
   const tb=document.getElementById('tbody');if(!tb)return;tb.innerHTML='';
@@ -180,7 +204,18 @@ function render(){
           const nTd=document.createElement('td');nTd.className='cn';nTd.rowSpan=rs;const nI=document.createElement('input');nI.value=samter.num;nI.placeholder='번호';nI.style.cssText='width:100%;border:none;background:transparent;text-align:center;font-weight:700;font-size:.85rem;color:var(--navy);padding:4px 2px;outline:none;font-family:inherit';nI.addEventListener('input',()=>{samter.num=nI.value;markDirty(nI.value);});nTd.appendChild(nI);tr.appendChild(nTd);
           const kTd=document.createElement('td');kTd.className='ck';kTd.rowSpan=rs;const kI=document.createElement('input');kI.value=samter.keeper;kI.placeholder='청지기';kI.id='kp-'+samter.id;kI.style.cssText='width:100%;border:none;background:transparent;text-align:center;font-size:.76rem;padding:2px;display:block;outline:none;font-family:inherit';
           kI.addEventListener('input',()=>{samter.keeper=kI.value;if(si===0){const el=document.getElementById('chief-'+dist.id);if(el)el.textContent=kI.value||'-';}const c2=samter.rows.flat().filter(Boolean).length+(kI.value?1:0);const cc=document.getElementById('cc-'+samter.id);if(cc)cc.textContent='('+c2+'명)';markDirty(samter.num);});
-          const cc=document.createElement('div');cc.className='ck-count';cc.id='cc-'+samter.id;cc.textContent='('+cnt+'명)';kTd.appendChild(kI);kTd.appendChild(cc);tr.appendChild(kTd);
+          const cc=document.createElement('div');cc.className='ck-count';cc.id='cc-'+samter.id;cc.textContent='('+cnt+'명)';
+          // 샘터 삭제 버튼
+          const delBtn=document.createElement('button');
+          delBtn.textContent='✕';
+          delBtn.title='이 샘터 삭제';
+          delBtn.style.cssText='margin-top:4px;background:rgba(192,57,43,.12);color:#c0392b;border:1px solid rgba(192,57,43,.25);border-radius:4px;width:100%;font-size:.68rem;padding:2px 0;cursor:pointer;font-family:inherit';
+          delBtn.onclick=()=>{
+            if(!confirm(samter.num+'샘터를 삭제하시겠습니까?\n(조원 '+cnt+'명 포함)'))return;
+            dist.samters.splice(dist.samters.indexOf(samter),1);
+            render();toast(samter.num+'샘터 삭제됨','ok');
+          };
+          kTd.appendChild(kI);kTd.appendChild(cc);kTd.appendChild(delBtn);tr.appendChild(kTd);
         }
         const cmTd=document.createElement('td');cmTd.className='cm';const g=document.createElement('div');g.className='mg';g.id='g-'+samter.id+'-'+ri;
         row.forEach((v,ci)=>{
