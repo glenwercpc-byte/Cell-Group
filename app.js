@@ -319,6 +319,34 @@ function openMonthlyModal(){
   openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:780px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📋 월 샘터 보고서</h2><div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center"><select id="mr-samter" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><select id="mr-month" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select><input id="mr-date" type="text" placeholder="모임일시 (예: 02/08/26)" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:140px;font-family:inherit"><input id="mr-place" type="text" placeholder="모임장소" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:110px;font-family:inherit"></div><div id="monthly-form-body"></div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button onclick="saveMonthlyData()" style="padding:9px 20px;background:#2d6a4f;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">💾 저장</button><button onclick="printMonthlyReport()" style="padding:9px 20px;background:#1a2744;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:9px 16px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:.82rem;cursor:pointer">닫기</button></div></div>');
   document.getElementById('mr-month').value=new Date().getMonth()+1;renderMonthlyForm();
 }
+
+// 출결 토글 버튼 클릭
+function toggleAtt(btn){
+  const cur=btn.dataset.val||'O';
+  const next=cur==='O'?'X':'O';
+  btn.dataset.val=next;
+  btn.textContent=next;
+  if(next==='X'){
+    btn.style.border='1.5px solid #c0392b';
+    btn.style.background='#fff0f0';
+    btn.style.color='#c0392b';
+  } else {
+    btn.style.border='1.5px solid #2d6a4f';
+    btn.style.background='#f0fff4';
+    btn.style.color='#2d6a4f';
+  }
+  // 출석/결석 카운트 업데이트
+  const body=document.getElementById('monthly-form-body');
+  if(!body)return;
+  const btns=[...body.querySelectorAll('.att-sel')];
+  const attCnt=btns.filter(b=>b.dataset.val==='O').length;
+  const tot=btns.length;
+  const cc=document.getElementById('att-count-cell');
+  const rc=document.getElementById('att-rate-cell');
+  if(cc)cc.textContent=attCnt+'명';
+  if(rc)rc.textContent=(tot>0?Math.round(attCnt/tot*100):0)+'%';
+}
+
 function renderMonthlyForm(){
   const sNum=document.getElementById('mr-samter')?.value,mon=document.getElementById('mr-month')?.value,body=document.getElementById('monthly-form-body');
   if(!sNum||!body)return;
@@ -327,14 +355,28 @@ function renderMonthlyForm(){
   const saved=attData[currentYear]?.[sNum]?.[mon]||{};
   const attCount=members.filter(m=>saved.hasOwnProperty(m)?saved[m]==='O':true).length;
   const total=members.length,rate=total>0?Math.round(attCount/total*100):0,half=Math.ceil(members.length/2);
-  function mkRows(list,off){return list.map((name,i)=>{const v=saved.hasOwnProperty(name)?saved[name]:'O';return'<div style="display:grid;grid-template-columns:28px 1fr 44px 1fr;border-bottom:.5px solid #eee"><span style="padding:4px;text-align:center;font-size:.75rem;border-right:1px solid #eee">'+(off+i+1)+'</span><span style="padding:4px 6px;font-size:.78rem;border-right:1px solid #eee">'+name+'</span><span style="padding:2px;text-align:center;border-right:1px solid #eee"><select data-member="'+name+'" class="att-sel" style="border:1px solid #ddd;border-radius:3px;font-size:.75rem;padding:1px;width:40px;font-family:inherit"><option value="O" '+(v==='O'?'selected':'')+'>O</option><option value="X" '+(v==='X'?'selected':'')+'>X</option></select></span><span style="padding:2px 4px"><input type="text" data-reason="'+name+'" class="att-reason" value="'+(saved[name+'_reason']||'')+'" style="border:none;width:100%;font-size:.74rem;font-family:inherit;outline:none"></span></div>';}).join('');}
+  function mkRows(list,off){return list.map((name,i)=>{
+    const v=saved.hasOwnProperty(name)?saved[name]:'O';
+    const isX=v==='X';
+    const btnStyle=isX
+      ?'width:36px;height:26px;border:1.5px solid #c0392b;border-radius:4px;background:#fff0f0;color:#c0392b;font-weight:700;font-size:.85rem;cursor:pointer;font-family:inherit'
+      :'width:36px;height:26px;border:1.5px solid #2d6a4f;border-radius:4px;background:#f0fff4;color:#2d6a4f;font-weight:700;font-size:.85rem;cursor:pointer;font-family:inherit';
+    return'<div style="display:grid;grid-template-columns:28px 1fr 44px 1fr;border-bottom:.5px solid #eee">'
+      +'<span style="padding:4px;text-align:center;font-size:.75rem;border-right:1px solid #eee">'+(off+i+1)+'</span>'
+      +'<span style="padding:4px 6px;font-size:.78rem;border-right:1px solid #eee">'+name+'</span>'
+      +'<span style="padding:3px;text-align:center;border-right:1px solid #eee">'
+      +'<button data-member="'+name+'" class="att-sel" data-val="'+v+'" style="'+btnStyle+'" onclick="toggleAtt(this)">'+(isX?'X':'O')+'</button>'
+      +'</span>'
+      +'<span style="padding:2px 4px"><input type="text" data-reason="'+name+'" class="att-reason" value="'+(saved[name+'_reason']||'')+'" style="border:none;width:100%;font-size:.74rem;font-family:inherit;outline:none"></span>'
+      +'</div>';
+  }).join('');}
   body.innerHTML='<div style="border:1.5px solid #1a2744;border-radius:4px;overflow:hidden;margin-bottom:10px"><table style="width:100%;border-collapse:collapse;background:#e8edf7"><tr style="font-size:.77rem;font-weight:700;color:#1a2744"><td style="padding:6px 10px;border:1px solid #b8c8e0">샘터</td><td style="padding:6px 10px;border:1px solid #b8c8e0;font-weight:800">'+sNum+'</td><td style="padding:6px 10px;border:1px solid #b8c8e0">청지기</td><td style="padding:6px 10px;border:1px solid #b8c8e0">'+(samter?.keeper||'')+'</td><td style="padding:6px 10px;border:1px solid #b8c8e0">지구장</td><td style="padding:6px 10px;border:1px solid #b8c8e0">'+getDistrictChief(sNum)+'</td><td style="padding:6px 10px;border:1px solid #b8c8e0">총원</td><td style="padding:6px 10px;border:1px solid #b8c8e0">'+total+'명</td><td style="padding:6px 10px;border:1px solid #b8c8e0">참석</td><td id="att-count-cell" style="padding:6px 10px;border:1px solid #b8c8e0;font-weight:700;color:#2d6a4f">'+attCount+'명</td><td style="padding:6px 10px;border:1px solid #b8c8e0">출석률</td><td id="att-rate-cell" style="padding:6px 10px;border:1px solid #b8c8e0;font-weight:700;color:#3a5a8c">'+rate+'%</td></tr></table><div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #ddd"><div><div style="display:grid;grid-template-columns:28px 1fr 44px 1fr;background:#3a5a8c;color:#fff;font-size:.73rem"><span style="padding:5px;text-align:center;border-right:1px solid rgba(255,255,255,.2)">번호</span><span style="padding:5px;border-right:1px solid rgba(255,255,255,.2)">성명</span><span style="padding:5px;text-align:center;border-right:1px solid rgba(255,255,255,.2)">출결</span><span style="padding:5px">결석사유</span></div>'+mkRows(members.slice(0,half),0)+'</div><div style="border-left:1px solid #ddd"><div style="display:grid;grid-template-columns:28px 1fr 44px 1fr;background:#3a5a8c;color:#fff;font-size:.73rem"><span style="padding:5px;text-align:center;border-right:1px solid rgba(255,255,255,.2)">번호</span><span style="padding:5px;border-right:1px solid rgba(255,255,255,.2)">성명</span><span style="padding:5px;text-align:center;border-right:1px solid rgba(255,255,255,.2)">출결</span><span style="padding:5px">결석사유</span></div>'+mkRows(members.slice(half),half)+'</div></div><table style="width:100%;border-collapse:collapse"><tr><td style="border:1px solid #ddd;padding:5px 8px;background:#f0f3f8;font-size:.75rem;font-weight:600;width:70px">새교우</td><td style="border:1px solid #ddd;padding:5px"><input id="mr-new" type="text" style="border:none;width:100%;font-family:inherit;font-size:.75rem;outline:none" value="'+(saved['_new']||'')+'"></td></tr><tr><td style="border:1px solid #ddd;padding:5px 8px;background:#f0f3f8;font-size:.75rem;font-weight:600">보고사항</td><td style="border:1px solid #ddd;padding:5px"><input id="mr-report" type="text" style="border:none;width:100%;font-family:inherit;font-size:.75rem;outline:none" value="'+(saved['_report']||'')+'"></td></tr><tr><td style="border:1px solid #ddd;padding:5px 8px;background:#f0f3f8;font-size:.75rem;font-weight:600">건의사항</td><td style="border:1px solid #ddd;padding:5px"><input id="mr-suggest" type="text" style="border:none;width:100%;font-family:inherit;font-size:.75rem;outline:none" value="'+(saved['_suggest']||'')+'"></td></tr></table></div>';
-  body.querySelectorAll('.att-sel').forEach(sel=>{sel.addEventListener('change',()=>{const cnt2=[...body.querySelectorAll('.att-sel')].filter(s=>s.value==='O').length,tot2=body.querySelectorAll('.att-sel').length;const cc=document.getElementById('att-count-cell'),rc=document.getElementById('att-rate-cell');if(cc)cc.textContent=cnt2+'명';if(rc)rc.textContent=(tot2>0?Math.round(cnt2/tot2*100):0)+'%';});});
+  // 카운트 업데이트는 toggleAtt()에서 처리
 }
 async function saveMonthlyData(){
   const sNum=document.getElementById('mr-samter')?.value,mon=document.getElementById('mr-month')?.value;
   if(!sNum||!mon){toast('샘터와 월을 선택하세요','err');return;}
-  const rec={};document.querySelectorAll('.att-sel').forEach(s=>{rec[s.dataset.member]=s.value;});document.querySelectorAll('.att-reason').forEach(i=>{if(i.value)rec[i.dataset.reason+'_reason']=i.value;});
+  const rec={};document.querySelectorAll('.att-sel').forEach(b=>{rec[b.dataset.member]=b.dataset.val||'O';});document.querySelectorAll('.att-reason').forEach(i=>{if(i.value)rec[i.dataset.reason+'_reason']=i.value;});
   rec['_new']=document.getElementById('mr-new')?.value||'';rec['_report']=document.getElementById('mr-report')?.value||'';rec['_suggest']=document.getElementById('mr-suggest')?.value||'';
   if(!attData[currentYear])attData[currentYear]={};if(!attData[currentYear][sNum])attData[currentYear][sNum]={};attData[currentYear][sNum][mon]=rec;
   try{localStorage.setItem(ATT_KEY,JSON.stringify(attData));}catch(e){}
