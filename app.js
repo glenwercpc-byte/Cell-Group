@@ -211,7 +211,46 @@ async function syncAllToSheets(){
     catch(e){fail++;toast(samter.num+'샘터 오류: '+e.message,'err');}
     await new Promise(r=>setTimeout(r,300));
   }
-  dirtySet.clear();toast(fail===0?'저장 완료 ('+done+'샘터) ✓':'완료 '+done+' / 실패 '+fail,fail?'err':'ok');
+  dirtySet.clear();
+  toast(fail===0?'저장 완료 ('+done+'샘터) ✓':'완료 '+done+' / 실패 '+fail,fail?'err':'ok');
+
+  // 교인 명부 cellGroup 자동 업데이트
+  if(fail===0) syncCellGroups();
+}
+
+// 조직표 → 교인 명부 cellGroup 동기화
+// 이름 → 지구-샘터 (예: '1-11', '2-23')
+async function syncCellGroups(){
+  const cellMap={};
+  state.forEach(dist=>{
+    // 지구 번호 추출 (예: '1지구' → '1')
+    const dNum=dist.name.replace(/지구.*$/,'').trim();
+    dist.samters.forEach(samter=>{
+      const code=dNum+'-'+samter.num;  // 예: '1-11'
+      // 청지기
+      if(samter.keeper) cellMap[samter.keeper]=code;
+      // 조원
+      samter.rows.flat().filter(Boolean).forEach(m=>{ cellMap[m]=code; });
+    });
+  });
+
+  if(Object.keys(cellMap).length===0) return;
+
+  try{
+    const res=await apiCall({
+      action:'updateCellGroups',
+      sheetId:MEMBER_SHEET_ID,
+      cellMap
+    });
+    if(res&&res.updated>0){
+      toast('교인 명부 셀그룹 '+res.updated+'명 업데이트 ✓','ok');
+    }
+    if(res&&res.notFound&&res.notFound.length>0){
+      console.log('명부에서 찾지 못한 이름:', res.notFound.join(', '));
+    }
+  }catch(e){
+    console.log('cellGroup 업데이트 실패:', e.message);
+  }
 }
 
 function addDistrict(){const n=state.length+1;state.push({id:Date.now(),name:n+'지구',samters:[]});render();toast(n+'지구 추가됨','ok');}
