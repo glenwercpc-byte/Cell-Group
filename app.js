@@ -1,7 +1,7 @@
 // 시카고 언약 장로교회 샘터 조직표 v4
 const API_URL='https://script.google.com/macros/s/AKfycbyTh4Bhr0yqbOo8VIkSZC561pRXiMfaI3CS9csdYOD7fsY5X3Irb_bGcMxXG36pwC8_GA/exec';
 const ATT_KEY='samter_att';
-let allData={},currentYear='2026',state=[],attData={};
+let allData={},currentYear='2026',state=[],attData={},memberNames=[];
 let nextSid=500,pendingYear=null,selMode=null;
 const dirtySet=new Set();
 const BASE_2026=[];  // 샘플 데이터 제거 — Sheets에서 로드
@@ -14,6 +14,8 @@ window.addEventListener('DOMContentLoaded',async()=>{
   if(tb){
     tb.innerHTML='<tr><td colspan="3" style="padding:30px;text-align:center;color:#888;font-size:.9rem">⏳ Google Sheets에서 데이터를 불러오는 중...</td></tr>';
   }
+  // 교인 명부 로드 (자동완성용)
+  loadMemberNames();
 
   try{
     const res=await apiCall({action:'getOrg',year:'2026'});
@@ -79,6 +81,66 @@ function jsonpCall(data){
   });
 }
 function cvtOrg(districts){const r=[];Object.entries(districts).forEach(([n,d])=>{const sl=(d.samters||[]).map(s=>({num:s.num,keeper:s.keeper||'',members:(s.members||[]).filter(Boolean)}));if(sl.length>0)r.push({name:n,samters:sl});});r.sort((a,b)=>a.name.localeCompare(b.name,'ko'));return r;}
+
+// 교인 명부 로드 (member-register Sheets에서)
+const MEMBER_SHEET_ID='1QlnhsPgcYZA6BHShjG35HoewOIp2NF0l2HAz6cOTOFY';
+async function loadMemberNames(){
+  try{
+    const res=await apiCall({action:'getMembers',sheetId:MEMBER_SHEET_ID});
+    if(res&&res.names&&res.names.length>0){
+      memberNames=res.names;
+      console.log('교인 명부 로드: '+memberNames.length+'명');
+    }
+  }catch(e){
+    console.log('교인 명부 로드 실패:', e.message);
+  }
+}
+
+// 자동완성 드롭다운
+function showAutoComplete(inp, samterNum, rowIdx, colIdx){
+  // 기존 드롭다운 제거
+  document.getElementById('ac-dropdown')?.remove();
+  const val=inp.value.trim();
+  if(!val||memberNames.length===0)return;
+
+  // 검색
+  const matched=memberNames.filter(n=>n.includes(val)).slice(0,8);
+  if(!matched.length)return;
+
+  const dd=document.createElement('div');
+  dd.id='ac-dropdown';
+  dd.style.cssText='position:fixed;background:#fff;border:1.5px solid #1a2744;border-radius:6px;'
+    +'box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:9999;min-width:140px;overflow:hidden';
+
+  const rect=inp.getBoundingClientRect();
+  dd.style.left=rect.left+'px';
+  dd.style.top=(rect.bottom+2)+'px';
+
+  matched.forEach(name=>{
+    const item=document.createElement('div');
+    item.textContent=name;
+    item.style.cssText='padding:7px 12px;font-size:.82rem;cursor:pointer;border-bottom:.5px solid #eee;color:#1a2744';
+    item.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      inp.value=name;
+      inp.dispatchEvent(new Event('input'));
+      dd.remove();
+    });
+    item.addEventListener('mouseover',()=>{item.style.background='#f0f3f8';});
+    item.addEventListener('mouseout',()=>{item.style.background='';});
+    dd.appendChild(item);
+  });
+
+  document.body.appendChild(dd);
+
+  // 외부 클릭 시 닫기
+  setTimeout(()=>{
+    document.addEventListener('click',function handler(){
+      dd.remove();
+      document.removeEventListener('click',handler);
+    });
+  },100);
+}
 
 function loadYear(y){
   currentYear=y;document.getElementById('yd').textContent=y;
@@ -218,14 +280,36 @@ function render(){
             kTd.appendChild(xBtn);
           }
           const kI=document.createElement('input');kI.value=samter.keeper;kI.placeholder='청지기';kI.id='kp-'+samter.id;kI.style.cssText='width:100%;border:none;background:transparent;text-align:center;font-size:.76rem;padding:2px;display:block;outline:none;font-family:inherit';
-          kI.addEventListener('input',()=>{samter.keeper=kI.value;if(si===0){const el=document.getElementById('chief-'+dist.id);if(el)el.textContent=kI.value||'-';}const c2=samter.rows.flat().filter(Boolean).length+(kI.value?1:0);const cc=document.getElementById('cc-'+samter.id);if(cc)cc.textContent='('+c2+'명)';markDirty(samter.num);});
+          kI.addEventListener('input',()=>{
+            samter.keeper=kI.value;
+            if(si===0){const el=document.getElementById('chief-'+dist.id);if(el)el.textContent=kI.value||'-';}
+            const c2=samter.rows.flat().filter(Boolean).length+(kI.value?1:0);
+            const cc=document.getElementById('cc-'+samter.id);
+            if(cc)cc.textContent='('+c2+'명)';
+            markDirty(samter.num);
+            showAutoComplete(kI,samter.num,0,-1);
+          });
+          kI.addEventListener('blur',()=>{
+            setTimeout(()=>document.getElementById('ac-dropdown')?.remove(),200);
+          });
           const cc=document.createElement('div');cc.className='ck-count';cc.id='cc-'+samter.id;cc.textContent='('+cnt+'명)';
           kTd.appendChild(kI);kTd.appendChild(cc);tr.appendChild(kTd);
         }
         const cmTd=document.createElement('td');cmTd.className='cm';const g=document.createElement('div');g.className='mg';g.id='g-'+samter.id+'-'+ri;
         row.forEach((v,ci)=>{
           const mc=document.createElement('div');mc.className='mc';const inp=document.createElement('input');inp.value=v;inp.placeholder=(ri*10+ci+1)+'번';
-          inp.addEventListener('input',()=>{row[ci]=inp.value;const c2=samter.rows.flat().filter(Boolean).length+(samter.keeper?1:0);const cc=document.getElementById('cc-'+samter.id);if(cc)cc.textContent='('+c2+'명)';updateStat();markDirty(samter.num);});
+          inp.addEventListener('input',()=>{
+            row[ci]=inp.value;
+            const c2=samter.rows.flat().filter(Boolean).length+(samter.keeper?1:0);
+            const cc=document.getElementById('cc-'+samter.id);
+            if(cc)cc.textContent='('+c2+'명)';
+            updateStat();markDirty(samter.num);
+            // 자동완성
+            showAutoComplete(inp,samter.num,ri,ci);
+          });
+          inp.addEventListener('blur',()=>{
+            setTimeout(()=>document.getElementById('ac-dropdown')?.remove(),200);
+          });
           inp.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();if(ci<9){g.querySelectorAll('input')[ci+1]?.focus();}else{const nri=ri+1;if(nri>=samter.rows.length){samter.rows.push(['','','','','','','','','','']);render();setTimeout(()=>document.getElementById('g-'+samter.id+'-'+nri)?.querySelectorAll('input')[0]?.focus(),20);}else{document.getElementById('g-'+samter.id+'-'+nri)?.querySelectorAll('input')[0]?.focus();}}});
           mc.appendChild(inp);g.appendChild(mc);
         });
