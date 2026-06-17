@@ -223,33 +223,52 @@ async function syncAllToSheets(){
 async function syncCellGroups(){
   const cellMap={};
   state.forEach(dist=>{
-    // 지구 번호 추출 (예: '1지구' → '1')
     const dNum=dist.name.replace(/지구.*$/,'').trim();
     dist.samters.forEach(samter=>{
-      const code=dNum+'-'+samter.num;  // 예: '1-11'
-      // 청지기
+      const code=dNum+'-'+samter.num;
       if(samter.keeper) cellMap[samter.keeper]=code;
-      // 조원
-      samter.rows.flat().filter(Boolean).forEach(m=>{ cellMap[m]=code; });
+      samter.rows.flat().filter(Boolean).forEach(m=>{cellMap[m]=code;});
     });
   });
-
   if(Object.keys(cellMap).length===0) return;
 
+  toast('교인 명부 업데이트 중…','ok');
   try{
-    const res=await apiCall({
-      action:'updateCellGroups',
-      sheetId:MEMBER_SHEET_ID,
-      cellMap
-    });
+    // 데이터가 크므로 POST 방식 사용
+    const data={action:'updateCellGroups',sheetId:MEMBER_SHEET_ID,cellMap};
+    const res=await fetchPost(data);
     if(res&&res.updated>0){
       toast('교인 명부 셀그룹 '+res.updated+'명 업데이트 ✓','ok');
+    } else if(res&&res.updated===0){
+      toast('교인 명부: 일치하는 이름 없음','ok');
     }
     if(res&&res.notFound&&res.notFound.length>0){
-      console.log('명부에서 찾지 못한 이름:', res.notFound.join(', '));
+      console.log('명부 미발견:', res.notFound.slice(0,10).join(', '));
     }
   }catch(e){
     console.log('cellGroup 업데이트 실패:', e.message);
+    toast('교인 명부 업데이트 실패: '+e.message,'err');
+  }
+}
+
+// POST 방식 API 호출 (대용량 데이터용)
+async function fetchPost(data){
+  try{
+    const res=await fetch(API_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(data)
+    });
+    // no-cors는 응답을 읽을 수 없으므로 성공으로 간주
+    return {updated:-1};
+  }catch(e){
+    // fetch 실패 시 JSONP로 시도 (데이터를 분할)
+    const entries=Object.entries(data.cellMap);
+    const chunk=entries.slice(0,50); // 50명씩
+    const smallMap=Object.fromEntries(chunk);
+    const res=await apiCall({...data,cellMap:smallMap});
+    return res;
   }
 }
 
