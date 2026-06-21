@@ -509,10 +509,10 @@ async function renderMonthlyForm(){
   }
 
   const saved=attData[currentYear]?.[sNum]?.[mon]||{};
-  // 저장된 모임일시/장소 복원
+  // 모임일시/장소 — 항상 해당 월 값으로 갱신 (없으면 빈칸)
   const dateInp=document.getElementById('mr-date'),placeInp=document.getElementById('mr-place');
-  if(dateInp && saved['_date']) dateInp.value=saved['_date'];
-  if(placeInp && saved['_place']) placeInp.value=saved['_place'];
+  if(dateInp)  dateInp.value  = saved['_date']  || '';
+  if(placeInp) placeInp.value = saved['_place'] || '';
   const attCount=members.filter(m=>saved.hasOwnProperty(m)?saved[m]==='O':true).length;
   const total=members.length,rate=total>0?Math.round(attCount/total*100):0,half=Math.ceil(members.length/2);
   function mkRows(list,off){return list.map((name,i)=>{
