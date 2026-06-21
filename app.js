@@ -389,6 +389,7 @@ function toggleExport(){
   // innerHTML 대신 DOM으로 생성 (따옴표 문제 방지)
   const items=[
     ['gdocs','📄','조직표 출력'],
+    ['addressBook','📇','샘터별 주소록'],
     ['monthly','📋','월 샘터보고서'],
     ['yearly','📅','샘터별 출석 상황'],
     ['monthlyAll','📊','월 전체 보고서'],
@@ -404,7 +405,7 @@ function toggleExport(){
   expb.classList.toggle('hidden');
 }
 function closeExport(){const b=document.getElementById('expb');if(b)b.classList.add('hidden');}
-function doExport(t){closeExport();if(t==='gdocs')exportToGoogleDocs();if(t==='monthly')openMonthlyModal();if(t==='monthlyAll')openMonthlyAllModal();if(t==='yearly')openYearlyModal();}
+function doExport(t){closeExport();if(t==='gdocs')exportToGoogleDocs();if(t==='addressBook')openAddressBook();if(t==='monthly')openMonthlyModal();if(t==='monthlyAll')openMonthlyAllModal();if(t==='yearly')openYearlyModal();}
 
 function exportToGoogleDocs(){
   saveCurrentToAllData();
@@ -692,6 +693,109 @@ function printMonthlyAll(){
     +'<script>window.onload=function(){window.print();}<\/script>'
     +'</body></html>');
   w.document.close();
+}
+
+
+// ── 샘터별 주소록 ─────────────────────────────────────────────────
+async function openAddressBook(){
+  openFullModal(
+    '<div style="background:#fff;border-radius:12px;width:100%;max-width:760px;padding:28px 24px 24px;position:relative;margin:auto">'
+    +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
+    +'<h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📇 샘터별 주소록</h2>'
+    +'<div id="addr-loading" style="text-align:center;padding:30px;color:#888">⏳ 교인 명부를 불러오는 중...</div>'
+    +'<div id="addr-body" style="display:none"></div>'
+    +'</div>'
+  );
+  await renderAddressBook();
+}
+
+async function renderAddressBook(){
+  const loadingEl=document.getElementById('addr-loading');
+  const bodyEl=document.getElementById('addr-body');
+  try{
+    const res=await apiCall({action:'getMembersFull',sheetId:MEMBER_SHEET_ID});
+    const members=res?.members||[];
+
+    // cellGroup별로 그룹화: { '1-11': [member, ...] }
+    const groups={};
+    members.forEach(m=>{
+      if(!m.cellGroup) return;
+      if(!groups[m.cellGroup]) groups[m.cellGroup]=[];
+      groups[m.cellGroup].push(m);
+    });
+
+    let html='<select id="addr-samter" onchange="filterAddressBook()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit;margin-bottom:14px;width:100%">';
+    html+='<option value="">-- 전체 샘터 보기 --</option>';
+    state.forEach(dist=>{
+      const dNum=dist.name.replace(/지구.*$/,'').trim();
+      dist.samters.forEach(s=>{
+        const code=dNum+'-'+s.num;
+        html+='<option value="'+code+'">'+dist.name+' '+s.num+'샘터 ('+s.keeper+')</option>';
+      });
+    });
+    html+='</select>';
+    html+='<div id="addr-cards"></div>';
+
+    bodyEl.innerHTML=html;
+    bodyEl.dataset.groups=JSON.stringify(groups);
+    loadingEl.style.display='none';
+    bodyEl.style.display='block';
+    renderAddressCards(groups);
+  }catch(e){
+    loadingEl.innerHTML='<p style="color:#c0392b">교인 명부 로드 실패: '+e.message+'</p>';
+  }
+}
+
+function filterAddressBook(){
+  const bodyEl=document.getElementById('addr-body');
+  const groups=JSON.parse(bodyEl.dataset.groups||'{}');
+  const sel=document.getElementById('addr-samter').value;
+  renderAddressCards(groups, sel);
+}
+
+function renderAddressCards(groups, filterCode){
+  const cardsEl=document.getElementById('addr-cards');
+  if(!cardsEl)return;
+
+  const codes=filterCode?[filterCode]:Object.keys(groups).sort();
+  if(!codes.length || (filterCode && !groups[filterCode])){
+    cardsEl.innerHTML='<p style="color:#888;text-align:center;padding:20px">해당 샘터에 등록된 교인이 없습니다.</p>';
+    return;
+  }
+
+  let html='';
+  codes.forEach(code=>{
+    const list=groups[code];
+    if(!list||!list.length)return;
+    // 지구-샘터 표시명 찾기
+    const [dNum,sNum]=code.split('-');
+    let label=code;
+    const dist=state.find(d=>d.name===dNum+'지구');
+    const samter=dist?.samters.find(s=>s.num===sNum);
+    if(dist&&samter) label=dist.name+' '+samter.num+'샘터 (청지기: '+samter.keeper+')';
+
+    html+='<div style="margin-bottom:18px">'
+      +'<div style="background:#3a5a8c;color:#fff;font-weight:700;font-size:.85rem;padding:8px 14px;border-radius:6px 6px 0 0">'+label+' &middot; '+list.length+'명</div>'
+      +'<div style="border:1px solid #ddd;border-top:none;border-radius:0 0 6px 6px;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
+
+    list.forEach(m=>{
+      const photoHtml=m.photo
+        ?'<img src="'+m.photo+'" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display=\'none\'">'
+        :'<div style="width:48px;height:48px;border-radius:50%;background:#e8eef7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#3a5a8c;flex-shrink:0">👤</div>';
+
+      html+='<div style="display:flex;gap:10px;padding:8px;border:1px solid #eee;border-radius:8px;background:#fafbfc">'
+        +photoHtml
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-weight:700;font-size:.88rem;color:#1a2744">'+m.name+'</div>'
+        +(m.phone?'<div style="font-size:.78rem;color:#444;margin-top:2px">📞 '+m.phone+'</div>':'')
+        +(m.address?'<div style="font-size:.74rem;color:#888;margin-top:2px;word-break:break-word">📍 '+m.address+'</div>':'')
+        +'</div></div>';
+    });
+
+    html+='</div></div>';
+  });
+
+  cardsEl.innerHTML=html||'<p style="color:#888;text-align:center;padding:20px">데이터가 없습니다.</p>';
 }
 
 function openYearlyModal(){
