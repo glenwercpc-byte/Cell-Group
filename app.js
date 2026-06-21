@@ -489,11 +489,25 @@ function toggleAtt(btn){
   if(rc)rc.textContent=(tot>0?Math.round(attCnt/tot*100):0)+'%';
 }
 
-function renderMonthlyForm(){
+async function renderMonthlyForm(){
   const sNum=document.getElementById('mr-samter')?.value,mon=document.getElementById('mr-month')?.value,body=document.getElementById('monthly-form-body');
   if(!sNum||!body)return;
   const members=getMemberList(sNum),samter=getSamterByNum(sNum);
   if(!members.length){body.innerHTML='<p style="color:#888">조원이 없습니다.</p>';return;}
+
+  // Sheets에서 출석 데이터 로드 (로컬 캐시 없으면)
+  if(!attData[currentYear]) attData[currentYear]={};
+  if(!attData[currentYear][sNum]){
+    body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 출석 데이터 로드 중...</p>';
+    try{
+      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
+      attData[currentYear][sNum]=res?.months||{};
+    }catch(e){
+      attData[currentYear][sNum]={};
+      console.log('출석 로드 실패:',e.message);
+    }
+  }
+
   const saved=attData[currentYear]?.[sNum]?.[mon]||{};
   const attCount=members.filter(m=>saved.hasOwnProperty(m)?saved[m]==='O':true).length;
   const total=members.length,rate=total>0?Math.round(attCount/total*100):0,half=Math.ceil(members.length/2);
@@ -549,6 +563,30 @@ function openMonthlyAllModal(){
     +'</div>'
   );
   document.getElementById('mar-month').value = new Date().getMonth()+1;
+  loadAllAttendanceThenRender();
+}
+
+// 모든 샘터의 출석 데이터를 Sheets에서 로드 후 렌더링
+async function loadAllAttendanceThenRender(){
+  const body=document.getElementById('monthly-all-body');
+  if(body) body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 전체 샘터 출석 데이터 로드 중...</p>';
+
+  if(!attData[currentYear]) attData[currentYear]={};
+
+  // 모든 샘터 순회하며 출석 데이터 로드 (캐시 없는 것만)
+  const allSamters=[];
+  state.forEach(dist=>dist.samters.forEach(s=>allSamters.push(s.num)));
+
+  for(const sNum of allSamters){
+    if(!attData[currentYear][sNum]){
+      try{
+        const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
+        attData[currentYear][sNum]=res?.months||{};
+      }catch(e){
+        attData[currentYear][sNum]={};
+      }
+    }
+  }
   renderMonthlyAll();
 }
 
