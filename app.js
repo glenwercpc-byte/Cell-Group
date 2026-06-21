@@ -509,6 +509,10 @@ async function renderMonthlyForm(){
   }
 
   const saved=attData[currentYear]?.[sNum]?.[mon]||{};
+  // 저장된 모임일시/장소 복원
+  const dateInp=document.getElementById('mr-date'),placeInp=document.getElementById('mr-place');
+  if(dateInp && saved['_date']) dateInp.value=saved['_date'];
+  if(placeInp && saved['_place']) placeInp.value=saved['_place'];
   const attCount=members.filter(m=>saved.hasOwnProperty(m)?saved[m]==='O':true).length;
   const total=members.length,rate=total>0?Math.round(attCount/total*100):0,half=Math.ceil(members.length/2);
   function mkRows(list,off){return list.map((name,i)=>{
@@ -534,8 +538,14 @@ async function renderMonthlyForm(){
 async function saveMonthlyData(){
   const sNum=document.getElementById('mr-samter')?.value,mon=document.getElementById('mr-month')?.value;
   if(!sNum||!mon){toast('샘터와 월을 선택하세요','err');return;}
-  const rec={};document.querySelectorAll('.att-sel').forEach(b=>{rec[b.dataset.member]=b.dataset.val||'O';});document.querySelectorAll('.att-reason').forEach(i=>{if(i.value)rec[i.dataset.reason+'_reason']=i.value;});
-  rec['_new']=document.getElementById('mr-new')?.value||'';rec['_report']=document.getElementById('mr-report')?.value||'';rec['_suggest']=document.getElementById('mr-suggest')?.value||'';
+  const rec={};
+  document.querySelectorAll('.att-sel').forEach(b=>{rec[b.dataset.member]=b.dataset.val||'O';});
+  document.querySelectorAll('.att-reason').forEach(i=>{if(i.value)rec[i.dataset.reason+'_reason']=i.value;});
+  rec['_new']=document.getElementById('mr-new')?.value||'';
+  rec['_report']=document.getElementById('mr-report')?.value||'';
+  rec['_suggest']=document.getElementById('mr-suggest')?.value||'';
+  rec['_date']=document.getElementById('mr-date')?.value||'';
+  rec['_place']=document.getElementById('mr-place')?.value||'';
   if(!attData[currentYear])attData[currentYear]={};if(!attData[currentYear][sNum])attData[currentYear][sNum]={};attData[currentYear][sNum][mon]=rec;
   try{localStorage.setItem(ATT_KEY,JSON.stringify(attData));}catch(e){}
   try{await apiCall({action:'saveAtt',year:currentYear,samter:sNum,month:mon,record:rec});toast(sNum+'샘터 '+mon+'월 저장 완료','ok');}catch(e){toast('로컬 저장 완료','ok');}
@@ -627,6 +637,20 @@ function renderMonthlyAll(){
           : '<span style="color:#2d6a4f;font-size:.78rem">결석자 없음</span>')
         +'</td>'
         +'</tr>';
+
+      // 새교우/보고사항/건의사항이 있으면 추가 행
+      const extraItems=[];
+      if(saved['_new'])     extraItems.push(['👋 새교우', saved['_new']]);
+      if(saved['_report'])  extraItems.push(['📢 보고사항', saved['_report']]);
+      if(saved['_suggest']) extraItems.push(['💡 건의사항', saved['_suggest']]);
+
+      if(extraItems.length > 0){
+        distHtml += '<tr><td colspan="7" style="border:1px solid #ddd;padding:6px 10px;background:#fffbf0">'
+          + extraItems.map(([label,val]) =>
+              '<div style="font-size:.78rem;margin-bottom:2px"><strong style="color:#8a6d00">'+label+':</strong> '+val+'</div>'
+            ).join('')
+          + '</td></tr>';
+      }
     });
 
     if(!distHtml) return;
