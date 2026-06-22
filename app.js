@@ -40,30 +40,35 @@ window.addEventListener('DOMContentLoaded',async()=>{
   }
 });
 
-function apiCall(data){
+function apiCall(data, timeoutMs){
   // fetch 먼저 시도 (모바일 포함 모든 환경), 실패 시 JSONP
-  return fetchCall(data).catch(()=>jsonpCall(data));
+  return fetchCall(data, timeoutMs).catch(()=>jsonpCall(data, timeoutMs));
 }
 
-async function fetchCall(data){
+async function fetchCall(data, timeoutMs){
   const url=API_URL+'?payload='+encodeURIComponent(JSON.stringify(data));
-  const res=await fetch(url,{method:'GET',mode:'cors'});
-  const text=await res.text();
-  // JSONP 응답 형태면 콜백 부분 제거
-  const clean=text.replace(/^[^(]+\(/, '').replace(/\)\s*;?\s*$/, '').trim();
-  const json=JSON.parse(clean);
-  if(!json.ok) throw new Error(json.error||'오류');
-  return json.data;
+  const controller=new AbortController();
+  const t=setTimeout(()=>controller.abort(), timeoutMs||20000);
+  try{
+    const res=await fetch(url,{method:'GET',mode:'cors',signal:controller.signal});
+    const text=await res.text();
+    const clean=text.replace(/^[^(]+\(/, '').replace(/\)\s*;?\s*$/, '').trim();
+    const json=JSON.parse(clean);
+    if(!json.ok) throw new Error(json.error||'오류');
+    return json.data;
+  }finally{
+    clearTimeout(t);
+  }
 }
 
-function jsonpCall(data){
+function jsonpCall(data, timeoutMs){
   return new Promise((resolve,reject)=>{
     const cb='__cb'+Date.now()+'_'+Math.floor(Math.random()*9999);
     const timer=setTimeout(()=>{
       delete window[cb];
       const s=document.getElementById(cb);if(s)s.remove();
       reject(new Error('시간 초과'));
-    },15000);
+    },timeoutMs||20000);
     window[cb]=function(json){
       clearTimeout(timer);delete window[cb];
       const s=document.getElementById(cb);if(s)s.remove();
@@ -464,7 +469,7 @@ function exportToGoogleDocs(){
       btn.addEventListener('click', async ()=>{
         btn.disabled=true; btn.textContent='⏳ 생성 중...';
         try{
-          const res=await apiCall({action:'exportOrgToSheet',year:currentYear});
+          const res=await apiCall({action:'exportOrgToSheet',year:currentYear}, 60000);
           toast('Google Sheets에 출력 완료 ✓','ok');
           if(res&&res.sheetId&&res.gid!==undefined){
             window.open('https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit#gid='+res.gid,'_blank');
