@@ -407,24 +407,6 @@ function toggleExport(){
 function closeExport(){const b=document.getElementById('expb');if(b)b.classList.add('hidden');}
 function doExport(t){closeExport();if(t==='gdocs')exportToGoogleDocs();if(t==='addressBook')openAddressBook();if(t==='monthly')openMonthlyModal();if(t==='monthlyAll')openMonthlyAllModal();if(t==='yearly')openYearlyModal();}
 
-async function exportToGSheet(){
-  const btn=document.getElementById('gsheet-btn');
-  // 팝업 창에서 호출되므로 부모(이 창)에서 처리
-  try{
-    if(btn){btn.disabled=true;btn.textContent='⏳ 생성 중...';}
-    const res=await apiCall({action:'exportOrgToSheet',year:currentYear});
-    toast('Google Sheets에 출력 완료 ✓','ok');
-    // 새 탭에서 Sheets 열기
-    if(res&&res.sheetId&&res.gid!==undefined){
-      window.open('https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit#gid='+res.gid,'_blank');
-    }
-  }catch(e){
-    toast('Sheets 출력 실패: '+e.message,'err');
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='📊 구글시트 출력';}
-  }
-}
-
 function exportToGoogleDocs(){
   saveCurrentToAllData();
   const total=state.reduce((a,d)=>a+d.samters.reduce((b,s)=>b+s.rows.flat().filter(Boolean).length+(s.keeper?1:0),0),0);
@@ -466,7 +448,7 @@ function exportToGoogleDocs(){
     +'<h1>시카고 언약 장로교회 '+currentYear+'년 샘터 조직표</h1>'
     +'<p class="sub">'+state.length+'지구 &middot; '+totalS+'샘터 &middot; 총 '+total+'명</p>'
     +'<div class="no-print" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px">'
-    +'<button class="btn" id="gsheet-btn" onclick="window.opener.exportToGSheet()" style="background:#0f9d58">📊 구글시트 출력</button>'
+    +'<button class="btn" id="gsheet-btn" style="background:#0f9d58">📊 구글시트 출력</button>'
     +'<button class="btn" onclick="window.print()" style="background:#1a2744">🖨 인쇄</button>'
     +'<button class="btn" onclick="window.close()" style="background:#888">✕ 닫기</button>'
     +'</div>'
@@ -474,6 +456,28 @@ function exportToGoogleDocs(){
     +'</body></html>';
   const w=window.open('','_blank');if(!w){toast('팝업 차단됨','err');return;}
   w.document.write(html);w.document.close();toast('조직표 출력 창이 열렸습니다','ok');
+
+  // 구글시트 출력 버튼 — 메인 창에서 직접 처리 (window.opener 의존 제거)
+  setTimeout(()=>{
+    const btn=w.document.getElementById('gsheet-btn');
+    if(btn){
+      btn.addEventListener('click', async ()=>{
+        btn.disabled=true; btn.textContent='⏳ 생성 중...';
+        try{
+          const res=await apiCall({action:'exportOrgToSheet',year:currentYear});
+          toast('Google Sheets에 출력 완료 ✓','ok');
+          if(res&&res.sheetId&&res.gid!==undefined){
+            window.open('https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit#gid='+res.gid,'_blank');
+          }
+        }catch(e){
+          toast('Sheets 출력 실패: '+e.message,'err');
+          alert('Sheets 출력 실패: '+e.message);
+        }finally{
+          btn.disabled=false; btn.textContent='📊 구글시트 출력';
+        }
+      });
+    }
+  },200);
 }
 
 function openMonthlyModal(){
