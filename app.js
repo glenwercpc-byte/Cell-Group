@@ -688,6 +688,12 @@ function renderMonthlyAll(){
       const attCount = members.filter(m => (saved.hasOwnProperty(m)?saved[m]:'O')==='O').length;
       const rate = Math.round(attCount/members.length*100);
 
+      // 새교우/보고사항/건의사항 — 결석자 칸 안에 줄바꿈으로 추가
+      const extraLines=[];
+      if(saved['_new'])     extraLines.push('<div style="margin-top:4px;font-size:.76rem"><strong style="color:#8a6d00">👋 새교우:</strong> '+saved['_new']+'</div>');
+      if(saved['_report'])  extraLines.push('<div style="margin-top:2px;font-size:.76rem"><strong style="color:#8a6d00">📢 보고사항:</strong> '+saved['_report']+'</div>');
+      if(saved['_suggest']) extraLines.push('<div style="margin-top:2px;font-size:.76rem"><strong style="color:#8a6d00">💡 건의사항:</strong> '+saved['_suggest']+'</div>');
+
       distHtml += '<tr>'
         +'<td style="border:1px solid #ddd;padding:5px 8px;font-weight:700;text-align:center;background:#f2f5fa;white-space:nowrap">'+s.num+'</td>'
         +'<td style="border:1px solid #ddd;padding:5px 8px;white-space:nowrap">'+s.keeper+'</td>'
@@ -703,22 +709,9 @@ function renderMonthlyAll(){
                 +name+(reason?'<span style="color:#888;font-size:.72rem"> ('+reason+')</span>':'')+'</span>';
             }).join('')
           : '<span style="color:#2d6a4f;font-size:.78rem">결석자 없음</span>')
+        +extraLines.join('')
         +'</td>'
         +'</tr>';
-
-      // 새교우/보고사항/건의사항이 있으면 추가 행
-      const extraItems=[];
-      if(saved['_new'])     extraItems.push(['👋 새교우', saved['_new']]);
-      if(saved['_report'])  extraItems.push(['📢 보고사항', saved['_report']]);
-      if(saved['_suggest']) extraItems.push(['💡 건의사항', saved['_suggest']]);
-
-      if(extraItems.length > 0){
-        distHtml += '<tr><td colspan="7" style="border:1px solid #ddd;padding:6px 10px;background:#fffbf0">'
-          + extraItems.map(([label,val]) =>
-              '<div style="font-size:.78rem;margin-bottom:2px"><strong style="color:#8a6d00">'+label+':</strong> '+val+'</div>'
-            ).join('')
-          + '</td></tr>';
-      }
     });
 
     if(!distHtml) return;
