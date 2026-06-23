@@ -764,60 +764,71 @@ function printMonthlyAll(){
 
 
 // ── 샘터별 주소록 ─────────────────────────────────────────────────
-async function openAddressBook(){
+// 1단계: 샘터 선택 모달
+function openAddressBook(){
+  const samOpts=buildSamterOptions();
   openFullModal(
-    '<div style="background:#fff;border-radius:12px;width:100%;max-width:760px;padding:28px 24px 24px;position:relative;margin:auto">'
+    '<div style="background:#fff;border-radius:12px;width:100%;max-width:420px;padding:28px 24px 24px;position:relative;margin:auto">'
     +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
     +'<h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📇 샘터별 주소록</h2>'
-    +'<div id="addr-loading" style="text-align:center;padding:30px;color:#888">⏳ 교인 명부를 불러오는 중...</div>'
-    +'<div id="addr-body" style="display:none"></div>'
+    +'<div style="font-size:.82rem;color:#666;margin-bottom:14px">주소록을 확인할 샘터를 선택하세요.</div>'
+    +'<select id="addr-pick-samter" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.88rem;font-family:inherit;margin-bottom:16px">'+samOpts+'</select>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button onclick="closeFullModal()" style="padding:9px 18px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.85rem;cursor:pointer">취소</button>'
+    +'<button onclick="confirmAddressBookSamter()" style="padding:9px 18px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer">확인</button>'
+    +'</div>'
     +'</div>'
   );
-  await renderAddressBook();
 }
 
-async function renderAddressBook(){
+function confirmAddressBookSamter(){
+  const sNum=document.getElementById('addr-pick-samter')?.value;
+  if(!sNum){toast('샘터를 선택하세요','err');return;}
+  // 지구 코드 찾기
+  let code=null,label='';
+  for(const dist of state){
+    const s=dist.samters.find(s=>s.num===sNum);
+    if(s){
+      const dNum=dist.name.replace(/지구.*$/,'').trim();
+      code=dNum+'-'+sNum;
+      label=dist.name+' '+sNum+'샘터 (청지기: '+s.keeper+')';
+      break;
+    }
+  }
+  if(!code){toast('샘터 정보를 찾을 수 없습니다','err');return;}
+  renderAddressBookFor(code,label);
+}
+
+// 2단계: 선택된 샘터의 주소록 표시
+async function renderAddressBookFor(code,label){
+  openFullModal(
+    '<div style="background:#fff;border-radius:12px;width:100%;max-width:600px;padding:28px 24px 24px;position:relative;margin:auto">'
+    +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
+    +'<h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:6px">📇 '+label+'</h2>'
+    +'<div style="margin-bottom:14px">'
+    +'<button onclick="openAddressBook()" style="padding:5px 12px;background:#f0f0f0;color:#555;border:none;border-radius:5px;font-size:.76rem;cursor:pointer">← 다른 샘터 선택</button>'
+    +'</div>'
+    +'<div id="addr-loading" style="text-align:center;padding:30px;color:#888">⏳ 교인 명부를 불러오는 중...</div>'
+    +'<div id="addr-cards" style="display:none"></div>'
+    +'</div>'
+  );
+
   const loadingEl=document.getElementById('addr-loading');
-  const bodyEl=document.getElementById('addr-body');
+  const cardsEl=document.getElementById('addr-cards');
   try{
     const res=await apiCall({action:'getMembersFull',sheetId:MEMBER_SHEET_ID});
     const members=res?.members||[];
+    const list=members.filter(m=>m.cellGroup===code);
 
-    // cellGroup별로 그룹화: { '1-11': [member, ...] }
-    const groups={};
-    members.forEach(m=>{
-      if(!m.cellGroup) return;
-      if(!groups[m.cellGroup]) groups[m.cellGroup]=[];
-      groups[m.cellGroup].push(m);
-    });
-
-    let html='<select id="addr-samter" onchange="filterAddressBook()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit;margin-bottom:14px;width:100%">';
-    html+='<option value="">-- 전체 샘터 보기 --</option>';
-    state.forEach(dist=>{
-      const dNum=dist.name.replace(/지구.*$/,'').trim();
-      dist.samters.forEach(s=>{
-        const code=dNum+'-'+s.num;
-        html+='<option value="'+code+'">'+dist.name+' '+s.num+'샘터 ('+s.keeper+')</option>';
-      });
-    });
-    html+='</select>';
-    html+='<div id="addr-cards"></div>';
-
-    bodyEl.innerHTML=html;
-    bodyEl.dataset.groups=JSON.stringify(groups);
     loadingEl.style.display='none';
-    bodyEl.style.display='block';
-    renderAddressCards(groups);
+    cardsEl.style.display='block';
+
+    const groups={};
+    groups[code]=list;
+    renderAddressCards(groups,code);
   }catch(e){
     loadingEl.innerHTML='<p style="color:#c0392b">교인 명부 로드 실패: '+e.message+'</p>';
   }
-}
-
-function filterAddressBook(){
-  const bodyEl=document.getElementById('addr-body');
-  const groups=JSON.parse(bodyEl.dataset.groups||'{}');
-  const sel=document.getElementById('addr-samter').value;
-  renderAddressCards(groups, sel);
 }
 
 function renderAddressCards(groups, filterCode){
