@@ -468,34 +468,53 @@ function exportToGoogleDocs(){
     if(btn){
       btn.addEventListener('click', async ()=>{
         btn.disabled=true; btn.textContent='⏳ 생성 중...';
+
+        // 클릭 즉시 빈 팝업 먼저 열기 (팝업 차단 우회)
+        const pw=window.open('','_blank');
+        if(pw){
+          pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>생성 중...</title>'
+            +'<style>body{font-family:"Noto Sans KR",sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#666}</style>'
+            +'</head><body><div>⏳ Google Sheets 생성 중... 잠시만 기다려 주세요.</div></body></html>');
+          pw.document.close();
+        }
+
         try{
           const res=await apiCall({action:'exportOrgToSheet',year:currentYear}, 60000);
           toast('Google Sheets에 출력 완료 ✓','ok');
+
           if(res&&res.sheetId&&res.gid!==undefined){
-            // 인쇄창처럼 별도 팝업으로 시트 미리보기 (iframe embed)
             const embedUrl='https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit?gid='+res.gid+'&rm=minimal';
             const fullUrl='https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit#gid='+res.gid;
-            const pw=window.open('','_blank');
-            pw.document.write(
-              '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Google Sheets 출력 — '+currentYear+'년 조직표</title>'
-              +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Noto Sans KR",sans-serif}'
-              +'.bar{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;background:#f5f3ee;border-bottom:1px solid #ddd}'
-              +'.btn{padding:7px 16px;border:none;border-radius:5px;font-size:.85rem;cursor:pointer;font-family:inherit}'
-              +'.btn-open{background:#0f9d58;color:#fff}'
-              +'.btn-close{background:#888;color:#fff}'
-              +'iframe{width:100%;height:calc(100vh - 50px);border:none;display:block}'
-              +'</style></head><body>'
-              +'<div class="bar">'
-              +'<button class="btn btn-open" onclick="window.open(\''+fullUrl+'\',\'_blank\')">🔗 Sheets에서 직접 열기</button>'
-              +'<button class="btn btn-close" onclick="window.close()">✕ 닫기</button>'
-              +'</div>'
-              +'<iframe src="'+embedUrl+'"></iframe>'
-              +'</body></html>'
-            );
-            pw.document.close();
+
+            if(pw && !pw.closed){
+              pw.document.open();
+              pw.document.write(
+                '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Google Sheets 출력 — '+currentYear+'년 조직표</title>'
+                +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Noto Sans KR",sans-serif}'
+                +'.bar{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;background:#f5f3ee;border-bottom:1px solid #ddd}'
+                +'.btn{padding:7px 16px;border:none;border-radius:5px;font-size:.85rem;cursor:pointer;font-family:inherit}'
+                +'.btn-open{background:#0f9d58;color:#fff}'
+                +'.btn-close{background:#888;color:#fff}'
+                +'iframe{width:100%;height:calc(100vh - 50px);border:none;display:block}'
+                +'</style></head><body>'
+                +'<div class="bar">'
+                +'<button class="btn btn-open" id="openBtn">🔗 Sheets에서 직접 열기</button>'
+                +'<button class="btn btn-close" onclick="window.close()">✕ 닫기</button>'
+                +'</div>'
+                +'<iframe src="'+embedUrl+'"></iframe>'
+                +'<script>document.getElementById("openBtn").onclick=function(){window.open("'+fullUrl+'","_blank");};<\/script>'
+                +'</body></html>'
+              );
+              pw.document.close();
+            } else {
+              if(confirm('팝업이 차단되어 미리보기를 열 수 없습니다.\n새 탭에서 Google Sheets를 여시겠습니까?')){
+                window.open(fullUrl,'_blank');
+              }
+            }
           }
         }catch(e){
           toast('Sheets 출력 실패: '+e.message,'err');
+          if(pw && !pw.closed) pw.close();
           alert('Sheets 출력 실패: '+e.message);
         }finally{
           btn.disabled=false; btn.textContent='📊 구글시트 출력';
