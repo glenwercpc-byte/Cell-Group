@@ -472,7 +472,27 @@ function exportToGoogleDocs(){
           const res=await apiCall({action:'exportOrgToSheet',year:currentYear}, 60000);
           toast('Google Sheets에 출력 완료 ✓','ok');
           if(res&&res.sheetId&&res.gid!==undefined){
-            window.open('https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit#gid='+res.gid,'_blank');
+            // 인쇄창처럼 별도 팝업으로 시트 미리보기 (iframe embed)
+            const embedUrl='https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit?gid='+res.gid+'&rm=minimal';
+            const fullUrl='https://docs.google.com/spreadsheets/d/'+res.sheetId+'/edit#gid='+res.gid;
+            const pw=window.open('','_blank');
+            pw.document.write(
+              '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Google Sheets 출력 — '+currentYear+'년 조직표</title>'
+              +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Noto Sans KR",sans-serif}'
+              +'.bar{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;background:#f5f3ee;border-bottom:1px solid #ddd}'
+              +'.btn{padding:7px 16px;border:none;border-radius:5px;font-size:.85rem;cursor:pointer;font-family:inherit}'
+              +'.btn-open{background:#0f9d58;color:#fff}'
+              +'.btn-close{background:#888;color:#fff}'
+              +'iframe{width:100%;height:calc(100vh - 50px);border:none;display:block}'
+              +'</style></head><body>'
+              +'<div class="bar">'
+              +'<button class="btn btn-open" onclick="window.open(\''+fullUrl+'\',\'_blank\')">🔗 Sheets에서 직접 열기</button>'
+              +'<button class="btn btn-close" onclick="window.close()">✕ 닫기</button>'
+              +'</div>'
+              +'<iframe src="'+embedUrl+'"></iframe>'
+              +'</body></html>'
+            );
+            pw.document.close();
           }
         }catch(e){
           toast('Sheets 출력 실패: '+e.message,'err');
