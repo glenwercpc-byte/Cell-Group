@@ -647,23 +647,45 @@ function openMonthlyAllModal(){
 // 모든 샘터의 출석 데이터를 Sheets에서 로드 후 렌더링
 async function loadAllAttendanceThenRender(){
   const body=document.getElementById('monthly-all-body');
-  if(body) body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 전체 샘터 출석 데이터 로드 중...</p>';
-
   if(!attData[currentYear]) attData[currentYear]={};
 
-  // 모든 샘터 순회하며 출석 데이터 로드 (캐시 없는 것만)
   const allSamters=[];
   state.forEach(dist=>dist.samters.forEach(s=>allSamters.push(s.num)));
 
-  for(const sNum of allSamters){
-    if(!attData[currentYear][sNum]){
-      try{
-        const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
-        attData[currentYear][sNum]=res?.months||{};
-      }catch(e){
-        attData[currentYear][sNum]={};
-      }
+  // 로드할 샘터만 카운트 (캐시 제외)
+  const toLoad=allSamters.filter(sNum=>!attData[currentYear][sNum]);
+  const totalCount=toLoad.length;
+
+  if(totalCount===0){ renderMonthlyAll(); return; }
+
+  // 애니메이션 로딩 화면
+  if(body){
+    body.innerHTML=
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:14px">'
+      +'<div class="spinner" style="width:36px;height:36px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
+      +'<div style="font-size:.88rem;color:#444;font-weight:600">전체 샘터 출석 데이터 로드 중...</div>'
+      +'<div id="load-progress-text" style="font-size:.78rem;color:#888">0 / '+totalCount+' 샘터</div>'
+      +'<div style="width:220px;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">'
+      +'<div id="load-progress-bar" style="width:0%;height:100%;background:#1a2744;border-radius:3px;transition:width .25s"></div>'
+      +'</div>'
+      +'<style>@keyframes spin{to{transform:rotate(360deg)}}</style>'
+      +'</div>';
+  }
+
+  let done=0;
+  for(const sNum of toLoad){
+    try{
+      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
+      attData[currentYear][sNum]=res?.months||{};
+    }catch(e){
+      attData[currentYear][sNum]={};
     }
+    done++;
+    const pct=Math.round(done/totalCount*100);
+    const txt=document.getElementById('load-progress-text');
+    const bar=document.getElementById('load-progress-bar');
+    if(txt) txt.textContent=done+' / '+totalCount+' 샘터';
+    if(bar) bar.style.width=pct+'%';
   }
   renderMonthlyAll();
 }
