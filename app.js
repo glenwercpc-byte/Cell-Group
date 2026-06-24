@@ -768,11 +768,24 @@ function printMonthlyAll(){
   const w = window.open('','_blank');
   w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
     +'<title>'+currentYear+'년 '+mon+'월 전체 보고서</title>'
-    +'<style>body{font-family:"Noto Sans KR",sans-serif;padding:16px;font-size:11px}h2{font-family:"Nanum Myeongjo",serif;color:#1a2744;margin-bottom:8px}table{width:100%;border-collapse:collapse;margin-bottom:14px}td,th{border:1px solid #bbb;padding:4px 7px;font-size:11px}.dist-hdr{background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:6px 10px;margin-bottom:0}@media print{button{display:none}}</style>'
+    +'<style>'
+    +'*{box-sizing:border-box}'
+    +'body{font-family:"Noto Sans KR",sans-serif;padding:16px;font-size:11px}'
+    +'h2{font-family:"Nanum Myeongjo",serif;color:#1a2744;margin-bottom:8px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:14px}'
+    +'td,th{border:1px solid #bbb;padding:4px 7px;font-size:11px}'
+    +'.dist-hdr{background:#3a5a8c;color:#fff;font-weight:700;font-size:12px;padding:6px 10px;margin-bottom:0}'
+    +'.no-print{display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px}'
+    +'.btn{padding:7px 16px;border:none;border-radius:5px;font-size:.85rem;cursor:pointer;font-family:inherit}'
+    +'@media print{.no-print{display:none!important}}'
+    +'</style>'
     +'</head><body>'
-    +'<h2>시카고 언약장로교회 '+currentYear+'년 '+mon+'월 샘터 전체 결석 현황</h2>'
+    +'<div class="no-print">'
+    +'<button class="btn" onclick="window.print()" style="background:#1a2744;color:#fff">📄 PDF 출력</button>'
+    +'<button class="btn" onclick="window.close()" style="background:#888;color:#fff">✕ 닫기</button>'
+    +'</div>'
+    +'<h2>시카고 언약장로교회 '+currentYear+'년 '+mon+'월 샘터 전체 출석 현황</h2>'
     +body.innerHTML
-    +'<script>window.onload=function(){window.print();}<\/script>'
     +'</body></html>');
   w.document.close();
 }
