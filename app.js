@@ -205,7 +205,40 @@ function pickMode(m){selMode=m;}
 function cancelModal(){document.getElementById('modal-area').innerHTML='';pendingYear=null;selMode=null;}
 function confirmModal(){cancelModal();}
 
-function saveOrg(){saveCurrentToAllData();syncAllToSheets();}
+const SAVE_PASSWORD='4241';
+
+function saveOrg(){
+  openFullModal(
+    '<div style="background:#fff;border-radius:12px;width:100%;max-width:320px;padding:28px 24px 24px;position:relative;margin:auto">'
+    +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
+    +'<div style="font-family:\'Nanum Myeongjo\',serif;font-size:1rem;color:#1a2744;font-weight:800;margin-bottom:6px">저장 확인</div>'
+    +'<div style="font-size:.75rem;color:#888;margin-bottom:16px;line-height:1.5">'+currentYear+'년 조직표를 Google Sheets에 저장합니다.<br>저장 비밀번호를 입력하세요.</div>'
+    +'<input type="password" id="save-pw" placeholder="저장 비밀번호" maxlength="4"'
+    +' style="width:100%;padding:11px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:1.1rem;text-align:center;letter-spacing:.25em;outline:none;margin-bottom:6px;font-family:inherit"'
+    +' onkeydown="if(event.key===\'Enter\')confirmSaveOrg();if(event.key===\'Escape\')closeFullModal()">'
+    +'<div id="save-pw-err" style="font-size:.72rem;color:#c0392b;min-height:16px;text-align:center;margin-bottom:12px"></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button onclick="closeFullModal()" style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;background:#f0f0f0;color:#555;border:none;cursor:pointer">취소</button>'
+    +'<button onclick="confirmSaveOrg()" style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer">저장</button>'
+    +'</div>'
+    +'</div>'
+  );
+  setTimeout(()=>document.getElementById('save-pw')?.focus(),80);
+}
+
+function confirmSaveOrg(){
+  const pw=(document.getElementById('save-pw')?.value||'').trim();
+  const err=document.getElementById('save-pw-err');
+  if(pw!==SAVE_PASSWORD){
+    if(err) err.textContent='비밀번호가 틀렸습니다.';
+    const inp=document.getElementById('save-pw');
+    if(inp){inp.value='';inp.focus();}
+    return;
+  }
+  closeFullModal();
+  saveCurrentToAllData();
+  syncAllToSheets();
+}
 function markDirty(n){dirtySet.add(String(n));}
 async function syncAllToSheets(){
   const targets=[];state.forEach(dist=>dist.samters.forEach(s=>{if(dirtySet.size===0||dirtySet.has(String(s.num)))targets.push({dist,samter:s});}));
