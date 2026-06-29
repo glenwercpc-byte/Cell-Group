@@ -415,7 +415,7 @@ function render(){
   });
   updateStat();
 }
-function updateStat(){const d=state.length,s=state.reduce((a,ds)=>a+ds.samters.length,0),m=state.reduce((a,ds)=>a+ds.samters.reduce((b,sm)=>b+sm.rows.flat().filter(Boolean).length+(sm.keeper?1:0),0),0);const el=document.getElementById('stat');if(el)el.textContent=currentYear+'년 · '+d+'지구 · '+s+'샘터 · 총 '+m+'명';}
+function updateStat(){const d=state.length,s=state.reduce((a,ds)=>a+ds.samters.length,0);const el=document.getElementById('stat');if(el)el.textContent=currentYear+'년 · '+d+'지구 · '+s+'샘터';}
 
 function getSamterByNum(n){for(const d of state){const s=d.samters.find(s=>s.num===String(n));if(s)return s;}return null;}
 function getDistrictChief(n){for(const d of state){if(d.samters.find(s=>s.num===String(n)))return d.samters[0]?.keeper||'-';}return '-';}
