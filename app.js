@@ -938,19 +938,47 @@ function renderAddressCards(groups, filterCode){
 }
 
 function openYearlyModal(){
-  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:920px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📅 샘터별 출석 상황 ('+currentYear+'년)</h2><div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap"><select id="yr-samter" onchange="renderYearlyTable()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><button onclick="printYearlyReport()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button></div><div id="yearly-table-body" style="overflow-x:auto"></div></div>');
+  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:920px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📅 샘터별 출석 상황 ('+currentYear+'년)</h2><div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap"><select id="yr-samter" onchange="loadYearlyThenRender()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><button onclick="printYearlyReport()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button></div><div id="yearly-table-body" style="overflow-x:auto"></div></div>');
+  loadYearlyThenRender();
+}
+
+// Sheets에서 출석 데이터 로드 후 렌더링 (독립적으로 작동)
+async function loadYearlyThenRender(){
+  const sNum=document.getElementById('yr-samter')?.value;
+  const body=document.getElementById('yearly-table-body');
+  if(!sNum||!body) return;
+
+  if(!attData[currentYear]) attData[currentYear]={};
+
+  if(!attData[currentYear][sNum]){
+    body.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:12px">'
+      +'<div style="width:32px;height:32px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
+      +'<div style="font-size:.85rem;color:#666">출석 데이터 로드 중...</div>'
+      +'<style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>';
+    try{
+      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
+      attData[currentYear][sNum]=res?.months||{};
+    }catch(e){
+      attData[currentYear][sNum]={};
+    }
+  }
   renderYearlyTable();
 }
 function renderYearlyTable(){
   const sNum=document.getElementById('yr-samter')?.value,body=document.getElementById('yearly-table-body');if(!sNum||!body)return;
   const members=getMemberList(sNum),mL=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+  // 데이터가 입력된 달 개수 (분모)
+  let enteredMonths=0;
+  for(let m=1;m<=12;m++){ if(attData[currentYear]?.[sNum]?.[m]) enteredMonths++; }
+
   let html='<table style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:700px"><thead><tr style="background:#1a2744;color:#fff"><th style="padding:7px 8px;border:1px solid rgba(255,255,255,.2);text-align:left">번호</th><th style="padding:7px 8px;border:1px solid rgba(255,255,255,.2);text-align:left;min-width:90px">성명</th>';
   mL.forEach(m=>{html+='<th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:40px">'+m+'</th>';});
-  html+='<th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:55px">출석달수<br><span style="font-size:.65rem;opacity:.8">(12개월중)</span></th><th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:44px">출석률</th></tr></thead><tbody>';
+  html+='<th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:55px">출석달수<br><span style="font-size:.65rem;opacity:.8">('+enteredMonths+'개월중)</span></th><th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:44px">출석률</th></tr></thead><tbody>';
   members.forEach((name,idx)=>{
     let attM=0,cells='';for(let m=1;m<=12;m++){const rec=attData[currentYear]?.[sNum]?.[m];if(!rec){cells+='<td style="border:1px solid #ddd;text-align:center;color:#ccc">-</td>';continue;}const v=rec[name]||'';if(v==='O')attM++;const col=v==='O'?'#2d6a4f':v==='X'?'#c0392b':'#888';cells+='<td style="border:1px solid #ddd;text-align:center;color:'+col+';font-weight:'+(v?'700':'400')+'">'+(v||'·')+'</td>';}
-    const rate=Math.round(attM/12*100),rc=rate>=80?'#2d6a4f':rate>=50?'#856404':'#c0392b';
-    html+='<tr style="background:'+(idx%2?'#f9fafc':'#fff')+'"><td style="border:1px solid #ddd;padding:5px 6px;text-align:center">'+(idx+1)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+name+'</td>'+cells+'<td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:#1a2744">'+attM+'/12</td><td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:'+rc+'">'+rate+'%</td></tr>';
+    const rate=enteredMonths>0?Math.round(attM/enteredMonths*100):0,rc=rate>=80?'#2d6a4f':rate>=50?'#856404':'#c0392b';
+    html+='<tr style="background:'+(idx%2?'#f9fafc':'#fff')+'"><td style="border:1px solid #ddd;padding:5px 6px;text-align:center">'+(idx+1)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+name+'</td>'+cells+'<td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:#1a2744">'+attM+'/'+enteredMonths+'</td><td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:'+rc+'">'+rate+'%</td></tr>';
   });
   html+='<tr style="background:#e8edf7;font-weight:700"><td colspan="2" style="border:1px solid #ddd;padding:5px 6px;text-align:center">월별 참석수</td>';
   for(let m=1;m<=12;m++){const rec=attData[currentYear]?.[sNum]?.[m];if(!rec){html+='<td style="border:1px solid #ddd;text-align:center;color:#bbb">-</td>';continue;}html+='<td style="border:1px solid #ddd;text-align:center">'+members.filter(n=>rec[n]==='O').length+'</td>';}
