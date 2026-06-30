@@ -755,7 +755,20 @@ function renderMonthlyAll(){
     dist.samters.forEach(s => {
       const members = getMemberList(s.num);
       if(!members.length) return;
-      const saved = attData[currentYear]?.[s.num]?.[mon] || {};
+
+      // 해당 월에 저장 기록이 한번도 없으면 미제출로 표시 (로딩 스킵)
+      const monthRecord = attData[currentYear]?.[s.num]?.[mon];
+      if(monthRecord === undefined){
+        distHtml += '<tr>'
+          +'<td style="border:1px solid #ddd;padding:5px 8px;font-weight:700;text-align:center;background:#f2f5fa;white-space:nowrap">'+s.num+'</td>'
+          +'<td style="border:1px solid #ddd;padding:5px 8px;white-space:nowrap">'+s.keeper+'</td>'
+          +'<td style="border:1px solid #ddd;padding:5px 8px;text-align:center">'+members.length+'</td>'
+          +'<td colspan="4" style="border:1px solid #ddd;padding:5px 8px;text-align:center;color:#aaa;font-size:.82rem;font-style:italic">📭 보고서 미제출</td>'
+          +'</tr>';
+        return;
+      }
+
+      const saved = monthRecord || {};
       // 결석자만 추출
       const absentees = members.filter(m => {
         const v = saved.hasOwnProperty(m) ? saved[m] : 'O';
