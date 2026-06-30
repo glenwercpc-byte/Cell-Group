@@ -717,7 +717,7 @@ function openMonthlyAllModal(){
     +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
     +'<h2 style="font-family:Nanum Myeongjo,serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📊 월 전체 보고서</h2>'
     +'<div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">'
-    +'<select id="mar-month" onchange="renderMonthlyAll()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select>'
+    +'<select id="mar-month" onchange="loadMonthThenRenderAll()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select>'
     +'<button onclick="printMonthlyAll()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button>'
     +'<button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button>'
     +'</div>'
@@ -725,30 +725,33 @@ function openMonthlyAllModal(){
     +'</div>'
   );
   document.getElementById('mar-month').value = new Date().getMonth()+1;
-  loadAllAttendanceThenRender();
+  loadMonthThenRenderAll();
 }
 
-// 모든 샘터의 출석 데이터를 Sheets에서 로드 후 렌더링 (병렬 처리로 속도 개선)
-async function loadAllAttendanceThenRender(){
+// 선택한 월의 데이터만 가볍게 로드 후 렌더링 (전체 12개월 대신 1개월만)
+async function loadMonthThenRenderAll(){
+  const mon=document.getElementById('mar-month')?.value;
   const body=document.getElementById('monthly-all-body');
+  if(!mon||!body) return;
   if(!attData[currentYear]) attData[currentYear]={};
 
   const allSamters=[];
   state.forEach(dist=>dist.samters.forEach(s=>allSamters.push(s.num)));
-  const totalAll=allSamters.length;  // 전체 샘터 수 (캐시 포함)
+  const totalAll=allSamters.length;
 
-  // 로드할 샘터만 추림 (캐시 제외)
-  const toLoad=allSamters.filter(sNum=>!attData[currentYear][sNum]);
+  // 해당 월 데이터가 이미 캐시되어 있는 샘터는 제외
+  const toLoad=allSamters.filter(sNum=>
+    !(attData[currentYear][sNum] && attData[currentYear][sNum][mon]!==undefined)
+  );
   const cachedCount=totalAll-toLoad.length;
 
   if(toLoad.length===0){ renderMonthlyAll(); return; }
 
-  // 애니메이션 로딩 화면 — 전체 샘터 수 기준 표시
   if(body){
     body.innerHTML=
       '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:14px">'
       +'<div class="spinner" style="width:36px;height:36px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
-      +'<div style="font-size:.88rem;color:#444;font-weight:600">전체 샘터 출석 데이터 로드 중...</div>'
+      +'<div style="font-size:.88rem;color:#444;font-weight:600">'+mon+'월 출석 데이터 로드 중...</div>'
       +'<div id="load-progress-text" style="font-size:.78rem;color:#888">'+cachedCount+' / '+totalAll+' 샘터</div>'
       +'<div style="width:220px;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">'
       +'<div id="load-progress-bar" style="width:'+Math.round(cachedCount/totalAll*100)+'%;height:100%;background:#1a2744;border-radius:3px;transition:width .25s"></div>'
@@ -757,7 +760,6 @@ async function loadAllAttendanceThenRender(){
       +'</div>';
   }
 
-  // 병렬 요청 — 동시에 여러 샘터 데이터를 가져와 속도 개선
   let done=cachedCount;
   const updateProgress=()=>{
     done++;
@@ -768,16 +770,18 @@ async function loadAllAttendanceThenRender(){
     if(bar) bar.style.width=pct+'%';
   };
 
-  // 한 번에 최대 4개씩 병렬 처리 (서버 부하 방지)
+  // 4개씩 병렬 처리 — 해당 월만 가볍게 조회
   const BATCH=4;
   for(let i=0;i<toLoad.length;i+=BATCH){
     const batch=toLoad.slice(i,i+BATCH);
     await Promise.all(batch.map(async sNum=>{
       try{
-        const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
-        attData[currentYear][sNum]=res?.months||{};
+        const res=await apiCall({action:'getAtt',year:currentYear,samter:sNum,month:mon});
+        if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
+        attData[currentYear][sNum][mon]=res?.data||{};
       }catch(e){
-        attData[currentYear][sNum]={};
+        if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
+        attData[currentYear][sNum][mon]={};
       }
       updateProgress();
     }));
