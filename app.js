@@ -559,7 +559,7 @@ function exportToGoogleDocs(){
 
 function openMonthlyModal(){
   const mOpts=[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>'<option value="'+m+'">'+m+'월</option>').join('');
-  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:780px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📋 월 샘터 보고서</h2><div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center"><select id="mr-samter" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><select id="mr-month" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select><input id="mr-date" type="text" placeholder="모임일시 (예: 02/08/26)" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:140px;font-family:inherit"><input id="mr-place" type="text" placeholder="모임장소" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:110px;font-family:inherit"></div><div id="monthly-form-body"></div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button onclick="saveMonthlyData()" style="padding:9px 20px;background:#2d6a4f;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">💾 저장</button><button onclick="printMonthlyReport()" style="padding:9px 20px;background:#1a2744;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:9px 16px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:.82rem;cursor:pointer">닫기</button></div></div>');
+  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:780px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📋 월 샘터 보고서</h2><div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center"><select id="mr-samter" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><select id="mr-month" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select><input id="mr-date" type="text" placeholder="모임일시 (예: 02/08/26)" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:140px;font-family:inherit"><input id="mr-place" type="text" placeholder="모임장소" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:110px;font-family:inherit"></div><div id="monthly-form-body"></div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button id="monthly-save-btn" onclick="saveMonthlyData()" style="padding:9px 20px;background:#2d6a4f;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">💾 저장</button><button onclick="printMonthlyReport()" style="padding:9px 20px;background:#1a2744;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:9px 16px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:.82rem;cursor:pointer">닫기</button></div></div>');
   document.getElementById('mr-month').value=new Date().getMonth()+1;renderMonthlyForm();
 }
 
@@ -639,6 +639,8 @@ async function renderMonthlyForm(){
 async function saveMonthlyData(){
   const sNum=document.getElementById('mr-samter')?.value,mon=document.getElementById('mr-month')?.value;
   if(!sNum||!mon){toast('샘터와 월을 선택하세요','err');return;}
+  const saveBtn=document.getElementById('monthly-save-btn');
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='⏳ 저장 중...';}
   const rec={};
   document.querySelectorAll('.att-sel').forEach(b=>{rec[b.dataset.member]=b.dataset.val||'O';});
   document.querySelectorAll('.att-reason').forEach(i=>{if(i.value)rec[i.dataset.reason+'_reason']=i.value;});
@@ -649,7 +651,15 @@ async function saveMonthlyData(){
   rec['_place']=document.getElementById('mr-place')?.value||'';
   if(!attData[currentYear])attData[currentYear]={};if(!attData[currentYear][sNum])attData[currentYear][sNum]={};attData[currentYear][sNum][mon]=rec;
   try{localStorage.setItem(ATT_KEY,JSON.stringify(attData));}catch(e){}
-  try{await apiCall({action:'saveAtt',year:currentYear,samter:sNum,month:mon,record:rec});toast(sNum+'샘터 '+mon+'월 저장 완료','ok');}catch(e){toast('로컬 저장 완료','ok');}
+
+  toast('수정된 보고서를 저장 중에 있습니다...','ok');
+  try{
+    await apiCall({action:'saveAtt',year:currentYear,samter:sNum,month:mon,record:rec});
+    toast(sNum+'샘터 '+mon+'월 저장 완료 ✓','ok');
+  }catch(e){
+    toast('로컬 저장 완료','ok');
+  }
+  if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='💾 저장';}
   renderMonthlyForm();
 }
 function printMonthlyReport(){
