@@ -572,18 +572,31 @@ async function checkMonthlyExists(){
   if(!sNum||!mon||!body) return;
 
   if(!attData[currentYear]) attData[currentYear]={};
-  if(!attData[currentYear][sNum]){
-    body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 출석 데이터 확인 중...</p>';
-    try{
-      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
-      attData[currentYear][sNum]=res?.months||{};
-    }catch(e){
-      attData[currentYear][sNum]={};
-    }
+
+  // 이미 캐시에 있으면 바로 표시 (네트워크 요청 없음)
+  if(attData[currentYear][sNum] && attData[currentYear][sNum][mon]!==undefined){
+    renderMonthlyForm();
+    return;
   }
 
-  const exists=attData[currentYear][sNum]?.[mon]!==undefined;
+  body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 확인 중...</p>';
+  let exists=false;
+  try{
+    const res=await apiCall({action:'checkAttExists',year:currentYear,samter:sNum,month:mon});
+    exists=!!(res && res.exists);
+  }catch(e){
+    exists=false;
+  }
+
   if(exists){
+    try{
+      const full=await apiCall({action:'getAtt',year:currentYear,samter:sNum,month:mon});
+      if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
+      attData[currentYear][sNum][mon]=full?.data||{};
+    }catch(e){
+      if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
+      attData[currentYear][sNum][mon]={};
+    }
     renderMonthlyForm();
   } else {
     body.innerHTML=
