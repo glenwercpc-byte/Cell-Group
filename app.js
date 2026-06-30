@@ -687,48 +687,59 @@ function openMonthlyAllModal(){
   loadAllAttendanceThenRender();
 }
 
-// 모든 샘터의 출석 데이터를 Sheets에서 로드 후 렌더링
+// 모든 샘터의 출석 데이터를 Sheets에서 로드 후 렌더링 (병렬 처리로 속도 개선)
 async function loadAllAttendanceThenRender(){
   const body=document.getElementById('monthly-all-body');
   if(!attData[currentYear]) attData[currentYear]={};
 
   const allSamters=[];
   state.forEach(dist=>dist.samters.forEach(s=>allSamters.push(s.num)));
+  const totalAll=allSamters.length;  // 전체 샘터 수 (캐시 포함)
 
-  // 로드할 샘터만 카운트 (캐시 제외)
+  // 로드할 샘터만 추림 (캐시 제외)
   const toLoad=allSamters.filter(sNum=>!attData[currentYear][sNum]);
-  const totalCount=toLoad.length;
+  const cachedCount=totalAll-toLoad.length;
 
-  if(totalCount===0){ renderMonthlyAll(); return; }
+  if(toLoad.length===0){ renderMonthlyAll(); return; }
 
-  // 애니메이션 로딩 화면
+  // 애니메이션 로딩 화면 — 전체 샘터 수 기준 표시
   if(body){
     body.innerHTML=
       '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:14px">'
       +'<div class="spinner" style="width:36px;height:36px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
       +'<div style="font-size:.88rem;color:#444;font-weight:600">전체 샘터 출석 데이터 로드 중...</div>'
-      +'<div id="load-progress-text" style="font-size:.78rem;color:#888">0 / '+totalCount+' 샘터</div>'
+      +'<div id="load-progress-text" style="font-size:.78rem;color:#888">'+cachedCount+' / '+totalAll+' 샘터</div>'
       +'<div style="width:220px;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">'
-      +'<div id="load-progress-bar" style="width:0%;height:100%;background:#1a2744;border-radius:3px;transition:width .25s"></div>'
+      +'<div id="load-progress-bar" style="width:'+Math.round(cachedCount/totalAll*100)+'%;height:100%;background:#1a2744;border-radius:3px;transition:width .25s"></div>'
       +'</div>'
       +'<style>@keyframes spin{to{transform:rotate(360deg)}}</style>'
       +'</div>';
   }
 
-  let done=0;
-  for(const sNum of toLoad){
-    try{
-      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
-      attData[currentYear][sNum]=res?.months||{};
-    }catch(e){
-      attData[currentYear][sNum]={};
-    }
+  // 병렬 요청 — 동시에 여러 샘터 데이터를 가져와 속도 개선
+  let done=cachedCount;
+  const updateProgress=()=>{
     done++;
-    const pct=Math.round(done/totalCount*100);
+    const pct=Math.round(done/totalAll*100);
     const txt=document.getElementById('load-progress-text');
     const bar=document.getElementById('load-progress-bar');
-    if(txt) txt.textContent=done+' / '+totalCount+' 샘터';
+    if(txt) txt.textContent=done+' / '+totalAll+' 샘터';
     if(bar) bar.style.width=pct+'%';
+  };
+
+  // 한 번에 최대 4개씩 병렬 처리 (서버 부하 방지)
+  const BATCH=4;
+  for(let i=0;i<toLoad.length;i+=BATCH){
+    const batch=toLoad.slice(i,i+BATCH);
+    await Promise.all(batch.map(async sNum=>{
+      try{
+        const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
+        attData[currentYear][sNum]=res?.months||{};
+      }catch(e){
+        attData[currentYear][sNum]={};
+      }
+      updateProgress();
+    }));
   }
   renderMonthlyAll();
 }
