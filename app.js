@@ -559,8 +559,46 @@ function exportToGoogleDocs(){
 
 function openMonthlyModal(){
   const mOpts=[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>'<option value="'+m+'">'+m+'월</option>').join('');
-  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:780px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📋 월 샘터 보고서</h2><div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center"><select id="mr-samter" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><select id="mr-month" onchange="renderMonthlyForm()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select><input id="mr-date" type="text" placeholder="모임일시 (예: 02/08/26)" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:140px;font-family:inherit"><input id="mr-place" type="text" placeholder="모임장소" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;width:110px;font-family:inherit"></div><div id="monthly-form-body"></div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button id="monthly-save-btn" onclick="saveMonthlyData()" style="padding:9px 20px;background:#2d6a4f;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">💾 저장</button><button onclick="printMonthlyReport()" style="padding:9px 20px;background:#1a2744;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:9px 16px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:.82rem;cursor:pointer">닫기</button></div></div>');
-  document.getElementById('mr-month').value=new Date().getMonth()+1;renderMonthlyForm();
+  openFullModal('<div style="background:#fff;border-radius:12px;width:100%;max-width:780px;padding:28px 24px 24px;position:relative;margin:auto"><button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button><h2 style="font-family:\'Nanum Myeongjo\',serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📋 월 샘터 보고서</h2><div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center"><select id="mr-samter" onchange="checkMonthlyExists()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+buildSamterOptions()+'</select><select id="mr-month" onchange="checkMonthlyExists()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select><input id="mr-date" type="text" style="display:none"><input id="mr-place" type="text" style="display:none"></div><div id="monthly-form-body"></div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button id="monthly-save-btn" onclick="saveMonthlyData()" style="padding:9px 20px;background:#2d6a4f;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">💾 저장</button><button onclick="printMonthlyReport()" style="padding:9px 20px;background:#1a2744;color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer">🖨 인쇄</button><button onclick="closeFullModal()" style="padding:9px 16px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:.82rem;cursor:pointer">닫기</button></div></div>');
+  document.getElementById('mr-month').value=new Date().getMonth()+1;
+  checkMonthlyExists();
+}
+
+// 샘터/월 선택 시 저장기록 확인 — 없으면 작성 여부 확인 모달
+async function checkMonthlyExists(){
+  const sNum=document.getElementById('mr-samter')?.value;
+  const mon=document.getElementById('mr-month')?.value;
+  const body=document.getElementById('monthly-form-body');
+  if(!sNum||!mon||!body) return;
+
+  if(!attData[currentYear]) attData[currentYear]={};
+  if(!attData[currentYear][sNum]){
+    body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 출석 데이터 확인 중...</p>';
+    try{
+      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
+      attData[currentYear][sNum]=res?.months||{};
+    }catch(e){
+      attData[currentYear][sNum]={};
+    }
+  }
+
+  const exists=attData[currentYear][sNum]?.[mon]!==undefined;
+  if(exists){
+    renderMonthlyForm();
+  } else {
+    body.innerHTML=
+      '<div style="text-align:center;padding:36px 20px">'
+      +'<div style="font-size:.9rem;color:#444;margin-bottom:20px;line-height:1.6">'+'<strong>'+mon+'월 보고서를 작성하시겠습니까?</strong></div>'
+      +'<div style="display:flex;gap:10px;justify-content:center">'
+      +'<button onclick="declineMonthlyCreate()" style="padding:9px 22px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:.85rem;cursor:pointer">아니요</button>'
+      +'<button onclick="renderMonthlyForm()" style="padding:9px 22px;background:#1a2744;color:#fff;border:none;border-radius:7px;font-size:.85rem;font-weight:600;cursor:pointer">네</button>'
+      +'</div></div>';
+  }
+}
+
+function declineMonthlyCreate(){
+  const body=document.getElementById('monthly-form-body');
+  if(body) body.innerHTML='<p style="color:#888;padding:30px;text-align:center">샘터와 월을 선택하세요.</p>';
 }
 
 // 출결 토글 버튼 클릭
@@ -590,24 +628,14 @@ function toggleAtt(btn){
   if(rc)rc.textContent=(tot>0?Math.round(attCnt/tot*100):0)+'%';
 }
 
-async function renderMonthlyForm(){
+function renderMonthlyForm(){
   const sNum=document.getElementById('mr-samter')?.value,mon=document.getElementById('mr-month')?.value,body=document.getElementById('monthly-form-body');
   if(!sNum||!body)return;
   const members=getMemberList(sNum),samter=getSamterByNum(sNum);
   if(!members.length){body.innerHTML='<p style="color:#888">조원이 없습니다.</p>';return;}
 
-  // Sheets에서 출석 데이터 로드 (로컬 캐시 없으면)
   if(!attData[currentYear]) attData[currentYear]={};
-  if(!attData[currentYear][sNum]){
-    body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 출석 데이터 로드 중...</p>';
-    try{
-      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
-      attData[currentYear][sNum]=res?.months||{};
-    }catch(e){
-      attData[currentYear][sNum]={};
-      console.log('출석 로드 실패:',e.message);
-    }
-  }
+  if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
 
   const saved=attData[currentYear]?.[sNum]?.[mon]||{};
   // 모임일시/장소 — 항상 해당 월 값으로 갱신 (없으면 빈칸)
