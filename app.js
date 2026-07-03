@@ -711,28 +711,34 @@ function printMonthlyReport(){
 
 // ── 월 전체 보고서 (지구별 결석자 명단) ─────────────────────────
 function openMonthlyAllModal(){
-  const mOpts=[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>'<option value="'+m+'">'+m+'월</option>').join('');
+  const mOpts='<option value="">-- 월 선택 --</option>'
+    +[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>'<option value="'+m+'">'+m+'월</option>').join('');
   openFullModal(
     '<div style="background:#fff;border-radius:12px;width:100%;max-width:860px;padding:28px 24px 24px;position:relative;margin:auto">'
     +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
     +'<h2 style="font-family:Nanum Myeongjo,serif;font-size:1.05rem;color:#1a2744;font-weight:800;margin-bottom:16px">📊 월 전체 보고서</h2>'
     +'<div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">'
-    +'<select id="mar-month" onchange="loadMonthThenRenderAll()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select>'
-    +'<button onclick="printMonthlyAll()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button>'
+    +'<select id="mar-month" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit">'+mOpts+'</select>'
+    +'<button onclick="loadMonthThenRenderAll()" style="padding:7px 14px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer;font-weight:600">조회</button>'
+    +'<button onclick="printMonthlyAll()" style="padding:7px 14px;background:#3a5a8c;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">🖨 인쇄</button>'
     +'<button onclick="closeFullModal()" style="padding:7px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer">닫기</button>'
     +'</div>'
-    +'<div id="monthly-all-body" style="overflow-y:auto;max-height:60vh"></div>'
+    +'<div id="monthly-all-body" style="overflow-y:auto;max-height:60vh">'
+    +'<p style="color:#aaa;text-align:center;padding:40px">월을 선택하고 조회 버튼을 누르세요.</p>'
+    +'</div>'
     +'</div>'
   );
-  document.getElementById('mar-month').value = new Date().getMonth()+1;
-  loadMonthThenRenderAll();
 }
 
 // 선택한 월의 데이터만 가볍게 로드 후 렌더링 (전체 12개월 대신 1개월만)
 async function loadMonthThenRenderAll(){
   const mon=document.getElementById('mar-month')?.value;
   const body=document.getElementById('monthly-all-body');
-  if(!mon||!body) return;
+  if(!body) return;
+  if(!mon){
+    body.innerHTML='<p style="color:#c0392b;text-align:center;padding:30px">월을 먼저 선택하세요.</p>';
+    return;
+  }
   if(!attData[currentYear]) attData[currentYear]={};
 
   const allSamters=[];
