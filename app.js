@@ -747,7 +747,7 @@ async function loadMonthThenRenderAll(){
 
   // 해당 월 데이터가 이미 캐시되어 있는 샘터는 제외
   const toLoad=allSamters.filter(sNum=>
-    !(attData[currentYear][sNum] && attData[currentYear][sNum][mon]!==undefined)
+    !(attData[currentYear][sNum] && attData[currentYear][sNum][String(mon)]!==undefined)
   ); // null도 캐시로 간주 (미제출 확인 완료)
   const cachedCount=totalAll-toLoad.length;
 
@@ -785,10 +785,10 @@ async function loadMonthThenRenderAll(){
         const res=await apiCall({action:'getAtt',year:currentYear,samter:sNum,month:mon});
         if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
         // null이면 미제출, 데이터 있으면 그대로 저장
-        attData[currentYear][sNum][mon] = (res?.data !== null && res?.data !== undefined) ? res.data : null;
+        attData[currentYear][sNum][String(mon)] = (res?.data !== null && res?.data !== undefined) ? res.data : null;
       }catch(e){
         if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
-        attData[currentYear][sNum][mon]=null; // 오류도 미제출로 처리
+        attData[currentYear][sNum][String(mon)]=null; // 오류도 미제출로 처리
       }
       updateProgress();
     }));
@@ -809,7 +809,7 @@ function renderMonthlyAll(){
       if(!members.length) return;
 
       // 해당 월에 저장 기록이 한번도 없으면 미제출로 표시 (로딩 스킵)
-      const monthRecord = attData[currentYear]?.[s.num]?.[mon];
+      const monthRecord = attData[currentYear]?.[s.num]?.[String(mon)];
       if(monthRecord === undefined || monthRecord === null){
         distHtml += '<tr>'
           +'<td style="border:1px solid #ddd;padding:5px 8px;font-weight:700;text-align:center;background:#f2f5fa;white-space:nowrap">'+s.num+'</td>'
