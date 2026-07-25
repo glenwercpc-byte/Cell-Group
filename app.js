@@ -1,7 +1,7 @@
 // 시카고 언약 장로교회 샘터 조직표 v4
 const API_URL='https://script.google.com/macros/s/AKfycbyTh4Bhr0yqbOo8VIkSZC561pRXiMfaI3CS9csdYOD7fsY5X3Irb_bGcMxXG36pwC8_GA/exec';
 const ATT_KEY='samter_att';
-let allData={},currentYear='2026',state=[],attData={},memberNames=[];
+let allData={},currentYear='2026',state=[],attData={},memberNames=[],membersFull=[];
 let nextSid=500,pendingYear=null,selMode=null;
 const dirtySet=new Set();
 const BASE_2026=[];  // 샘플 데이터 제거 — Sheets에서 로드
@@ -14,8 +14,9 @@ window.addEventListener('DOMContentLoaded',async()=>{
   if(tb){
     tb.innerHTML='<tr><td colspan="3" style="padding:30px;text-align:center;color:#888;font-size:.9rem">⏳ Google Sheets에서 데이터를 불러오는 중...</td></tr>';
   }
-  // 교인 명부 로드 (자동완성용)
+  // 교인 명부 로드 (자동완성 + 주소록 캐시)
   loadMemberNames();
+  loadMembersFull();
 
   try{
     const res=await apiCall({action:'getOrg',year:'2026'});
@@ -98,6 +99,18 @@ async function loadMemberNames(){
     }
   }catch(e){
     console.log('교인 명부 로드 실패:', e.message);
+  }
+}
+
+async function loadMembersFull(){
+  try{
+    const res=await apiCall({action:'getMembersFull',sheetId:MEMBER_SHEET_ID});
+    if(res&&res.members&&res.members.length>0){
+      membersFull=res.members;
+      console.log('교인 전체정보 캐시: '+membersFull.length+'명');
+    }
+  }catch(e){
+    console.log('교인 전체정보 로드 실패:', e.message);
   }
 }
 
@@ -963,8 +976,13 @@ async function renderAddressBookFor(code,label){
   const loadingEl=document.getElementById('addr-loading');
   const cardsEl=document.getElementById('addr-cards');
   try{
-    const res=await apiCall({action:'getMembersFull',sheetId:MEMBER_SHEET_ID});
-    const members=res?.members||[];
+    // 캐시된 데이터 사용 — 없으면 API 호출
+    let members=membersFull;
+    if(!members||members.length===0){
+      const res=await apiCall({action:'getMembersFull',sheetId:MEMBER_SHEET_ID});
+      members=res?.members||[];
+      membersFull=members; // 캐시에 저장
+    }
     const list=members.filter(m=>m.cellGroup===code);
 
     loadingEl.style.display='none';
