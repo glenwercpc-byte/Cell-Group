@@ -1036,17 +1036,19 @@ async function loadYearlyThenRender(){
 
   if(!attData[currentYear]) attData[currentYear]={};
 
-  if(!attData[currentYear][sNum]){
-    body.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:12px">'
-      +'<div style="width:32px;height:32px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
-      +'<div style="font-size:.85rem;color:#666">출석 데이터 로드 중...</div>'
-      +'<style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>';
-    try{
-      const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
-      attData[currentYear][sNum]=res?.months||{};
-    }catch(e){
-      attData[currentYear][sNum]={};
-    }
+  // 항상 getAllAtt로 전체 월 데이터를 가져옴 (부분 캐시 문제 방지)
+  body.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:12px">'
+    +'<div style="width:32px;height:32px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
+    +'<div style="font-size:.85rem;color:#666">출석 데이터 로드 중...</div>'
+    +'<style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>';
+  try{
+    const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
+    const months=res?.months||{};
+    // 기존 캐시에 merge (월별 보고서 데이터 보존)
+    if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
+    Object.assign(attData[currentYear][sNum], months);
+  }catch(e){
+    if(!attData[currentYear][sNum]) attData[currentYear][sNum]={};
   }
   renderYearlyTable();
 }
@@ -1056,18 +1058,18 @@ function renderYearlyTable(){
 
   // 데이터가 입력된 달 개수 (분모)
   let enteredMonths=0;
-  for(let m=1;m<=12;m++){ if(attData[currentYear]?.[sNum]?.[m]) enteredMonths++; }
+  for(let m=1;m<=12;m++){ if(attData[currentYear]?.[sNum]?.[m] || attData[currentYear]?.[sNum]?.[String(m)]) enteredMonths++; }
 
   let html='<table style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:700px"><thead><tr style="background:#1a2744;color:#fff"><th style="padding:7px 8px;border:1px solid rgba(255,255,255,.2);text-align:left">번호</th><th style="padding:7px 8px;border:1px solid rgba(255,255,255,.2);text-align:left;min-width:90px">성명</th>';
   mL.forEach(m=>{html+='<th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:40px">'+m+'</th>';});
   html+='<th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:55px">출석달수<br><span style="font-size:.65rem;opacity:.8">('+enteredMonths+'개월중)</span></th><th style="padding:7px 4px;border:1px solid rgba(255,255,255,.2);text-align:center;min-width:44px">출석률</th></tr></thead><tbody>';
   members.forEach((name,idx)=>{
-    let attM=0,cells='';for(let m=1;m<=12;m++){const rec=attData[currentYear]?.[sNum]?.[m];if(!rec){cells+='<td style="border:1px solid #ddd;text-align:center;color:#ccc">-</td>';continue;}const v=rec[name]||'';if(v==='O')attM++;const col=v==='O'?'#2d6a4f':v==='X'?'#c0392b':'#888';cells+='<td style="border:1px solid #ddd;text-align:center;color:'+col+';font-weight:'+(v?'700':'400')+'">'+(v||'·')+'</td>';}
+    let attM=0,cells='';for(let m=1;m<=12;m++){const rec=attData[currentYear]?.[sNum]?.[m]||attData[currentYear]?.[sNum]?.[String(m)];if(!rec){cells+='<td style="border:1px solid #ddd;text-align:center;color:#ccc">-</td>';continue;}const v=rec[name]||'';if(v==='O')attM++;const col=v==='O'?'#2d6a4f':v==='X'?'#c0392b':'#888';cells+='<td style="border:1px solid #ddd;text-align:center;color:'+col+';font-weight:'+(v?'700':'400')+'">'+(v||'·')+'</td>';}
     const rate=enteredMonths>0?Math.round(attM/enteredMonths*100):0,rc=rate>=80?'#2d6a4f':rate>=50?'#856404':'#c0392b';
     html+='<tr style="background:'+(idx%2?'#f9fafc':'#fff')+'"><td style="border:1px solid #ddd;padding:5px 6px;text-align:center">'+(idx+1)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+name+'</td>'+cells+'<td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:#1a2744">'+attM+'/'+enteredMonths+'</td><td style="border:1px solid #ddd;padding:5px 4px;text-align:center;font-weight:700;color:'+rc+'">'+rate+'%</td></tr>';
   });
   html+='<tr style="background:#e8edf7;font-weight:700"><td colspan="2" style="border:1px solid #ddd;padding:5px 6px;text-align:center">월별 참석수</td>';
-  for(let m=1;m<=12;m++){const rec=attData[currentYear]?.[sNum]?.[m];if(!rec){html+='<td style="border:1px solid #ddd;text-align:center;color:#bbb">-</td>';continue;}html+='<td style="border:1px solid #ddd;text-align:center">'+members.filter(n=>rec[n]==='O').length+'</td>';}
+  for(let m=1;m<=12;m++){const rec=attData[currentYear]?.[sNum]?.[m]||attData[currentYear]?.[sNum]?.[String(m)];if(!rec){html+='<td style="border:1px solid #ddd;text-align:center;color:#bbb">-</td>';continue;}html+='<td style="border:1px solid #ddd;text-align:center">'+members.filter(n=>rec[n]==='O').length+'</td>';}
   html+='<td colspan="2" style="border:1px solid #ddd"></td></tr></tbody></table>';body.innerHTML=html;
 }
 function printYearlyReport(){
