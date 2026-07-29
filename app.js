@@ -476,7 +476,7 @@ function openKeeperAuth(target){
     '<div style="background:#fff;border-radius:12px;width:100%;max-width:320px;padding:28px 24px 24px;position:relative;margin:auto">'
     +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
     +'<div style="font-family:Nanum Myeongjo,serif;font-size:1rem;color:#1a2744;font-weight:800;margin-bottom:6px">🔒 청지기 전용</div>'
-    +'<div style="font-size:.78rem;color:#888;margin-bottom:16px;line-height:1.6">'+labels[target]+'는 청지기 전용 메뉴입니다.<br>비밀번호를 입력하세요.</div>'
+    +'<div style="font-size:.78rem;color:#888;margin-bottom:16px;line-height:1.6">'+labels[target]+(target==='yearly'?'은':'는')+'청지기 전용 메뉴입니다.<br>비밀번호를 입력하세요.</div>'
     +'<input type="password" id="keeper-pw" data-target="'+target+'" placeholder="비밀번호" maxlength="4"'
     +' style="width:100%;padding:11px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:1.1rem;text-align:center;letter-spacing:.25em;outline:none;margin-bottom:6px;font-family:inherit">'
     +'<div id="keeper-pw-err" style="font-size:.72rem;color:#c0392b;min-height:16px;text-align:center;margin-bottom:12px"></div>'
