@@ -12,7 +12,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
   // 로딩 표시
   const tb=document.getElementById('tbody');
   if(tb){
-    tb.innerHTML='<tr><td colspan="3" style="padding:30px;text-align:center;color:#888;font-size:.9rem">⏳ Google Sheets에서 데이터를 불러오는 중...</td></tr>';
+    tb.innerHTML='<tr><td colspan="3" style="padding:0">'+loadingHTML('Google Sheets에서 데이터를 불러오는 중...')+'</td></tr>';
   }
   // 교인 명부 로드 (자동완성 + 주소록 캐시)
   loadMemberNames();
@@ -40,6 +40,19 @@ window.addEventListener('DOMContentLoaded',async()=>{
     toast('Sheets 연결 실패: '+e.message,'err');
   }
 });
+
+
+// ── 공통 로딩 HTML (페이드 아웃 반복 애니메이션) ─────────────────
+function loadingHTML(msg){
+  return '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:12px">'
+    +'<style>'
+    +'@keyframes spin{to{transform:rotate(360deg)}}'
+    +'@keyframes fadeLoop{0%,100%{opacity:1}50%{opacity:.2}}'
+    +'</style>'
+    +'<div style="width:34px;height:34px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin .8s linear infinite"></div>'
+    +'<div style="font-size:.85rem;color:#555;font-weight:600;animation:fadeLoop 1.6s ease-in-out infinite">'+(msg||'데이터를 불러오는 중...')+'</div>'
+    +'</div>';
+}
 
 function apiCall(data, timeoutMs){
   // fetch 먼저 시도 (모바일 포함 모든 환경), 실패 시 JSONP
@@ -648,7 +661,7 @@ async function checkMonthlyExists(){
     return;
   }
 
-  body.innerHTML='<p style="color:#888;padding:20px;text-align:center">⏳ 확인 중...</p>';
+  body.innerHTML=loadingHTML('확인 중...');
   let exists=false;
   try{
     const res=await apiCall({action:'checkAttExists',year:currentYear,samter:sNum,month:mon});
@@ -825,13 +838,13 @@ async function loadMonthThenRenderAll(){
   if(body){
     body.innerHTML=
       '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:14px">'
-      +'<div class="spinner" style="width:36px;height:36px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
-      +'<div style="font-size:.88rem;color:#444;font-weight:600">'+mon+'월 출석 데이터 로드 중...</div>'
+      +'<style>@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeLoop{0%,100%{opacity:1}50%{opacity:.2}}</style>'
+      +'<div style="width:34px;height:34px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin .8s linear infinite"></div>'
+      +'<div style="font-size:.88rem;color:#555;font-weight:600;animation:fadeLoop 1.6s ease-in-out infinite">'+mon+'월 출석 데이터 로드 중...</div>'
       +'<div id="load-progress-text" style="font-size:.78rem;color:#888">'+cachedCount+' / '+totalAll+' 샘터</div>'
       +'<div style="width:220px;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">'
       +'<div id="load-progress-bar" style="width:'+Math.round(cachedCount/totalAll*100)+'%;height:100%;background:#1a2744;border-radius:3px;transition:width .25s"></div>'
       +'</div>'
-      +'<style>@keyframes spin{to{transform:rotate(360deg)}}</style>'
       +'</div>';
   }
 
@@ -1024,7 +1037,7 @@ async function renderAddressBookFor(code,label){
     +'<div style="margin-bottom:14px">'
     +'<button onclick="openAddressBook()" style="padding:5px 12px;background:#f0f0f0;color:#555;border:none;border-radius:5px;font-size:.76rem;cursor:pointer">← 다른 샘터 선택</button>'
     +'</div>'
-    +'<div id="addr-loading" style="text-align:center;padding:30px;color:#888">⏳ 교인 명부를 불러오는 중...</div>'
+    +'<div id="addr-loading">'+loadingHTML('교인 명부를 불러오는 중...')+'</div>'
     +'<div id="addr-cards" style="display:none"></div>'
     +'</div>'
   );
@@ -1111,10 +1124,7 @@ async function loadYearlyThenRender(){
   if(!attData[currentYear]) attData[currentYear]={};
 
   // 항상 getAllAtt로 전체 월 데이터를 가져옴 (부분 캐시 문제 방지)
-  body.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:12px">'
-    +'<div style="width:32px;height:32px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin 0.8s linear infinite"></div>'
-    +'<div style="font-size:.85rem;color:#666">출석 데이터 로드 중...</div>'
-    +'<style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>';
+  body.innerHTML=loadingHTML('출석 데이터 로드 중...');
   try{
     const res=await apiCall({action:'getAllAtt',year:currentYear,samter:sNum});
     const months=res?.months||{};
