@@ -45,11 +45,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
 // ── 공통 로딩 HTML (페이드 아웃 반복 애니메이션) ─────────────────
 function loadingHTML(msg){
   return '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:12px">'
-    +'<style>'
-    +'@keyframes spin{to{transform:rotate(360deg)}}'
-    +'@keyframes fadeLoop{0%,100%{opacity:1}50%{opacity:.2}}'
-    +'</style>'
-    +'<div style="width:34px;height:34px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin .8s linear infinite"></div>'
+    +'<style>@keyframes fadeLoop{0%,100%{opacity:1}50%{opacity:.2}}</style>'
     +'<div style="font-size:.85rem;color:#555;font-weight:600;animation:fadeLoop 1.6s ease-in-out infinite">'+(msg||'데이터를 불러오는 중...')+'</div>'
     +'</div>';
 }
@@ -839,7 +835,6 @@ async function loadMonthThenRenderAll(){
     body.innerHTML=
       '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:14px">'
       +'<style>@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeLoop{0%,100%{opacity:1}50%{opacity:.2}}</style>'
-      +'<div style="width:34px;height:34px;border:4px solid #e0e7f3;border-top-color:#1a2744;border-radius:50%;animation:spin .8s linear infinite"></div>'
       +'<div style="font-size:.88rem;color:#555;font-weight:600;animation:fadeLoop 1.6s ease-in-out infinite">'+mon+'월 출석 데이터 로드 중...</div>'
       +'<div id="load-progress-text" style="font-size:.78rem;color:#888">'+cachedCount+' / '+totalAll+' 샘터</div>'
       +'<div style="width:220px;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">'
