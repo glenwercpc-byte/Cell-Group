@@ -229,38 +229,87 @@ function confirmModal(){cancelModal();}
 
 const SAVE_PASSWORD='4241';
 
-function saveOrg(){
-  openFullModal(
-    '<div style="background:#fff;border-radius:12px;width:100%;max-width:320px;padding:28px 24px 24px;position:relative;margin:auto">'
-    +'<button onclick="closeFullModal()" style="position:absolute;top:14px;right:16px;background:#f0f0f0;border:none;border-radius:50%;width:28px;height:28px;font-size:.8rem;cursor:pointer">✕</button>'
-    +'<div style="font-family:\'Nanum Myeongjo\',serif;font-size:1rem;color:#1a2744;font-weight:800;margin-bottom:6px">저장 확인</div>'
-    +'<div style="font-size:.75rem;color:#888;margin-bottom:16px;line-height:1.5">'+currentYear+'년 조직표를 Google Sheets에 저장합니다.<br>저장 비밀번호를 입력하세요.</div>'
-    +'<input type="password" id="save-pw" placeholder="저장 비밀번호" maxlength="4"'
-    +' style="width:100%;padding:11px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:1.1rem;text-align:center;letter-spacing:.25em;outline:none;margin-bottom:6px;font-family:inherit"'
-    +' onkeydown="if(event.key===\'Enter\')confirmSaveOrg();if(event.key===\'Escape\')closeFullModal()">'
-    +'<div id="save-pw-err" style="font-size:.72rem;color:#c0392b;min-height:16px;text-align:center;margin-bottom:12px"></div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button onclick="closeFullModal()" style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;background:#f0f0f0;color:#555;border:none;cursor:pointer">취소</button>'
-    +'<button onclick="confirmSaveOrg()" style="flex:1;padding:10px;border-radius:7px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer">저장</button>'
-    +'</div>'
-    +'</div>'
-  );
-  setTimeout(()=>document.getElementById('save-pw')?.focus(),80);
+
+// ── 관리자 암호 확인 모달 (버튼 바로 아래 인라인) ─────────────────
+function requireAdminAuth(anchorId, onSuccess){
+  // 이미 열려있으면 닫기
+  const existing=document.getElementById('admin-auth-box');
+  if(existing){ existing.remove(); return; }
+
+  const anchor=document.getElementById(anchorId);
+  if(!anchor) return;
+
+  const box=document.createElement('div');
+  box.id='admin-auth-box';
+  box.style.cssText='position:absolute;z-index:1000;background:#fff;border:1.5px solid #1a2744;border-radius:8px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.15);min-width:200px;margin-top:4px';
+
+  const label=document.createElement('div');
+  label.style.cssText='font-size:.72rem;color:#888;margin-bottom:7px;font-weight:600';
+  label.textContent='관리자 비밀번호';
+  box.appendChild(label);
+
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;gap:6px;align-items:center';
+
+  const inp=document.createElement('input');
+  inp.type='password';inp.maxLength=4;inp.placeholder='••••';
+  inp.style.cssText='width:80px;padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:.9rem;text-align:center;letter-spacing:.2em;outline:none;font-family:inherit';
+
+  const okBtn=document.createElement('button');
+  okBtn.textContent='확인';
+  okBtn.style.cssText='padding:7px 12px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit';
+
+  const cancelBtn=document.createElement('button');
+  cancelBtn.textContent='취소';
+  cancelBtn.style.cssText='padding:7px 10px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit';
+
+  const err=document.createElement('div');
+  err.style.cssText='font-size:.68rem;color:#c0392b;margin-top:5px;min-height:14px';
+
+  const confirm=()=>{
+    if(inp.value===SAVE_PASSWORD){
+      box.remove();
+      onSuccess();
+    } else {
+      err.textContent='비밀번호가 틀렸습니다.';
+      inp.value=''; inp.focus();
+    }
+  };
+
+  okBtn.onclick=confirm;
+  cancelBtn.onclick=()=>box.remove();
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter') confirm();
+    if(e.key==='Escape') box.remove();
+  });
+
+  row.appendChild(inp); row.appendChild(okBtn); row.appendChild(cancelBtn);
+  box.appendChild(row); box.appendChild(err);
+
+  // anchor 기준으로 relative 부모에 붙이기
+  const parent=anchor.parentElement;
+  parent.style.position='relative';
+  parent.appendChild(box);
+  setTimeout(()=>inp.focus(),30);
+
+  // 외부 클릭 시 닫기
+  setTimeout(()=>{
+    document.addEventListener('click',function handler(e){
+      if(!box.contains(e.target)&&e.target!==anchor){
+        box.remove();
+        document.removeEventListener('click',handler);
+      }
+    });
+  },100);
 }
 
-function confirmSaveOrg(){
-  const pw=(document.getElementById('save-pw')?.value||'').trim();
-  const err=document.getElementById('save-pw-err');
-  if(pw!==SAVE_PASSWORD){
-    if(err) err.textContent='비밀번호가 틀렸습니다.';
-    const inp=document.getElementById('save-pw');
-    if(inp){inp.value='';inp.focus();}
-    return;
-  }
-  closeFullModal();
-  saveCurrentToAllData();
-  syncAllToSheets();
+function saveOrg(){
+  requireAdminAuth('btn-save',()=>{
+    saveCurrentToAllData();
+    syncAllToSheets();
+  });
 }
+
 function markDirty(n){dirtySet.add(String(n));}
 async function syncAllToSheets(){
   const targets=[];state.forEach(dist=>dist.samters.forEach(s=>{if(dirtySet.size===0||dirtySet.has(String(s.num)))targets.push({dist,samter:s});}));
@@ -332,15 +381,23 @@ async function fetchPost(data){
   }
 }
 
-function addDistrict(){const n=state.length+1;state.push({id:Date.now(),name:n+'지구',samters:[]});render();toast(n+'지구 추가됨','ok');}
+function addDistrict(){
+  requireAdminAuth('btn-add-dist',()=>{
+    const n=state.length+1;
+    state.push({id:Date.now(),name:n+'지구',samters:[]});
+    render();toast(n+'지구 추가됨','ok');
+  });
+}
 function toggleDp(){
   const b=document.getElementById('dpb');
-  b.classList.toggle('hidden');
-  if(!b.classList.contains('hidden')){
+  // 이미 열려있으면 닫기
+  if(!b.classList.contains('hidden')){b.classList.add('hidden');return;}
+  requireAdminAuth('btn-add-samt',()=>{
+    b.classList.remove('hidden');
     document.getElementById('si').value='';
     document.getElementById('dp-err').textContent='';
     setTimeout(()=>document.getElementById('si').focus(),40);
-  }
+  });
 }
 function closeDp(){document.getElementById('dpb').classList.add('hidden');}
 function doAddSamter(){
