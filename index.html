@@ -196,9 +196,9 @@ table{width:100%;border-collapse:collapse}
     <div class="tb-stat" id="stat"></div>
 
     <div class="tb-btns">
-      <button class="btn-dist" onclick="addDistrict()">＋ 지구 추가</button>
+      <button id="btn-add-dist" class="btn-dist" onclick="addDistrict()">＋ 지구 추가</button>
       <div class="dp-wrap" id="dpw">
-        <button class="btn-samt" onclick="toggleDp()">＋ 샘터 추가</button>
+        <button id="btn-add-samt" class="btn-samt" onclick="toggleDp()">＋ 샘터 추가</button>
         <div class="dp-box hidden" id="dpb">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <label style="margin-bottom:0">샘터 번호 입력</label>
@@ -214,7 +214,7 @@ table{width:100%;border-collapse:collapse}
           </div>
         </div>
       </div>
-      <button class="btn-save-ctrl" onclick="saveOrg()">전체 저장</button>
+      <button id="btn-save" class="btn-save-ctrl" onclick="saveOrg()">전체 저장</button>
       <div class="export-wrap" id="expw">
         <button class="btn-export" onclick="toggleExport()">자료제공 ▾</button>
         <div class="export-box hidden" id="expb">
