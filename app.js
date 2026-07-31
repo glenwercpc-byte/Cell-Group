@@ -304,7 +304,7 @@ function requireAdminAuth(anchorId, onSuccess){
 }
 
 function saveOrg(){
-  requireAdminAuth('btn-save',()=>{
+  requireAdminAuth('btn-add-samt',()=>{
     saveCurrentToAllData();
     syncAllToSheets();
   });
@@ -382,7 +382,7 @@ async function fetchPost(data){
 }
 
 function addDistrict(){
-  requireAdminAuth('btn-add-dist',()=>{
+  requireAdminAuth('btn-add-samt',()=>{
     const n=state.length+1;
     state.push({id:Date.now(),name:n+'지구',samters:[]});
     render();toast(n+'지구 추가됨','ok');
