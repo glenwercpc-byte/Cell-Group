@@ -324,7 +324,29 @@ async function syncAllToSheets(){
   toast(fail===0?'저장 완료 ('+done+'샘터) ✓':'완료 '+done+' / 실패 '+fail,fail?'err':'ok');
 
   // 교인 명부 cellGroup 자동 업데이트
-  if(fail===0) syncCellGroups();
+  if(fail===0){
+    await syncCellGroups();
+    toast('저장 완료 ✓','ok');
+    await refreshData();
+  }
+}
+
+// 시트에서 최신 데이터 다시 불러오기
+async function refreshData(){
+  const y=currentYear;
+  try{
+    toast('데이터 새로고침 중…','ok');
+    const res=await apiCall({action:'getOrg',year:y});
+    if(res&&res.districts&&Object.keys(res.districts).length>0){
+      const c=cvtOrg(res.districts);
+      if(c.length>0){allData[y]=c;loadYear(y);}
+    }
+    if(typeof loadMemberNames==='function')loadMemberNames();
+    if(typeof loadMembersFull==='function')loadMembersFull();
+    toast('데이터 새로고침 완료 ✓','ok');
+  }catch(e){
+    toast('새로고침 실패: '+e.message,'err');
+  }
 }
 
 // 조직표 → 교인 명부 cellGroup 동기화
