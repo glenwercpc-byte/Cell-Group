@@ -1246,10 +1246,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeYP();closeDp()
 // ===== 이메일 발송 명단 편집 =====
 function openEmailTargets(){
   requireAdminAuth('btn-email',async()=>{
-    const old=document.getElementById('email-box');if(old)old.remove();
+    const old=document.getElementById('email-overlay');if(old)old.remove();
     const box=document.createElement('div');
     box.id='email-box';
-    box.style.cssText='position:absolute;z-index:1000;background:#fff;border:1.5px solid #1a2744;border-radius:8px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.15);width:300px;margin-top:4px;max-height:70vh;overflow:auto';
+    box.style.cssText='background:#fff;border:1.5px solid #1a2744;border-radius:10px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);width:92%;max-width:420px;max-height:85vh;overflow:auto';
     const title=document.createElement('div');
     title.style.cssText='font-size:.8rem;font-weight:700;margin-bottom:4px';
     title.textContent='월 전체 보고서 이메일 발송 명단';
@@ -1278,8 +1278,11 @@ function openEmailTargets(){
     closeBtn.style.cssText='padding:6px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.76rem;cursor:pointer;font-family:inherit';
     btnRow.appendChild(saveBtn);btnRow.appendChild(closeBtn);
     box.appendChild(title);box.appendChild(sub);box.appendChild(listEl);box.appendChild(addRow);box.appendChild(btnRow);
-    const anchor=document.getElementById('btn-email');
-    const parent=anchor.parentElement;parent.style.position='relative';parent.appendChild(box);
+    const ov=document.createElement('div');
+    ov.id='email-overlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center';
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    ov.appendChild(box);document.body.appendChild(ov);
 
     let names=[];
     const draw=()=>{
@@ -1302,13 +1305,13 @@ function openEmailTargets(){
     };
     addBtn.addEventListener('click',add);
     inp.addEventListener('keydown',e=>{if(e.key==='Enter')add();});
-    closeBtn.addEventListener('click',()=>box.remove());
+    closeBtn.addEventListener('click',()=>ov.remove());
     saveBtn.addEventListener('click',async()=>{
       saveBtn.disabled=true;saveBtn.textContent='저장 중...';
       try{
         const r=await apiCall({action:'saveEmailTargets',names:names});
         toast('이메일 발송 명단 저장 완료 ('+(r&&r.saved!=null?r.saved:names.length)+'명) ✓','ok');
-        box.remove();
+        ov.remove();
       }catch(e){
         toast('저장 실패: '+e.message,'err');
         saveBtn.disabled=false;saveBtn.textContent='저장';
