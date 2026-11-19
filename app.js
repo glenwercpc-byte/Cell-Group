@@ -1241,3 +1241,85 @@ let _tt;
 function toast(msg,type){const el=document.getElementById('toast');if(!el)return;el.textContent=(type==='ok'?'✓ ':'✕ ')+msg;el.className='show '+(type||'ok');clearTimeout(_tt);_tt=setTimeout(()=>{el.className='';},3500);}
 document.addEventListener('click',e=>{if(!document.getElementById('yw')?.contains(e.target))closeYP();if(!document.getElementById('dpw')?.contains(e.target))closeDp();if(!document.getElementById('expw')?.contains(e.target))closeExport();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeYP();closeDp();cancelModal();closeFullModal();}});
+
+
+// ===== 이메일 발송 명단 편집 =====
+function openEmailTargets(){
+  requireAdminAuth('btn-email',async()=>{
+    const old=document.getElementById('email-box');if(old)old.remove();
+    const box=document.createElement('div');
+    box.id='email-box';
+    box.style.cssText='position:absolute;z-index:1000;background:#fff;border:1.5px solid #1a2744;border-radius:8px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.15);width:300px;margin-top:4px;max-height:70vh;overflow:auto';
+    const title=document.createElement('div');
+    title.style.cssText='font-size:.8rem;font-weight:700;margin-bottom:4px';
+    title.textContent='월 전체 보고서 이메일 발송 명단';
+    const sub=document.createElement('div');
+    sub.style.cssText='font-size:.68rem;color:#888;margin-bottom:8px';
+    sub.textContent='이름은 교인 명부의 name과 일치해야 하며, 명부에 이메일이 있어야 발송됩니다.';
+    const listEl=document.createElement('div');
+    listEl.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px';
+    listEl.textContent='불러오는 중...';
+    const addRow=document.createElement('div');
+    addRow.style.cssText='display:flex;gap:6px;margin-bottom:8px';
+    const inp=document.createElement('input');
+    inp.type='text';inp.placeholder='이름 추가';
+    inp.style.cssText='flex:1;padding:6px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:.8rem;font-family:inherit;min-width:0';
+    const addBtn=document.createElement('button');
+    addBtn.textContent='추가';
+    addBtn.style.cssText='padding:6px 10px;background:#1a2744;color:#fff;border:none;border-radius:6px;font-size:.76rem;cursor:pointer;font-family:inherit';
+    addRow.appendChild(inp);addRow.appendChild(addBtn);
+    const btnRow=document.createElement('div');
+    btnRow.style.cssText='display:flex;gap:6px;justify-content:flex-end';
+    const saveBtn=document.createElement('button');
+    saveBtn.textContent='저장';
+    saveBtn.style.cssText='padding:6px 12px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit';
+    const closeBtn=document.createElement('button');
+    closeBtn.textContent='닫기';
+    closeBtn.style.cssText='padding:6px 12px;background:#f0f0f0;color:#555;border:none;border-radius:6px;font-size:.76rem;cursor:pointer;font-family:inherit';
+    btnRow.appendChild(saveBtn);btnRow.appendChild(closeBtn);
+    box.appendChild(title);box.appendChild(sub);box.appendChild(listEl);box.appendChild(addRow);box.appendChild(btnRow);
+    const anchor=document.getElementById('btn-email');
+    const parent=anchor.parentElement;parent.style.position='relative';parent.appendChild(box);
+
+    let names=[];
+    const draw=()=>{
+      listEl.textContent='';
+      names.forEach((n,i)=>{
+        const chip=document.createElement('span');
+        chip.style.cssText='display:inline-flex;align-items:center;gap:4px;background:#eef1f8;border-radius:12px;padding:3px 8px;font-size:.76rem';
+        const t=document.createElement('span');t.textContent=n;
+        const x=document.createElement('span');x.textContent='×';x.style.cssText='cursor:pointer;color:#c0392b;font-weight:700';
+        x.addEventListener('click',()=>{names.splice(i,1);draw();});
+        chip.appendChild(t);chip.appendChild(x);listEl.appendChild(chip);
+      });
+      if(!names.length)listEl.textContent='(명단 없음)';
+    };
+    const add=()=>{
+      const v=inp.value.trim();
+      if(!v)return;
+      if(names.indexOf(v)<0)names.push(v);
+      inp.value='';draw();inp.focus();
+    };
+    addBtn.addEventListener('click',add);
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')add();});
+    closeBtn.addEventListener('click',()=>box.remove());
+    saveBtn.addEventListener('click',async()=>{
+      saveBtn.disabled=true;saveBtn.textContent='저장 중...';
+      try{
+        const r=await apiCall({action:'saveEmailTargets',names:names});
+        toast('이메일 발송 명단 저장 완료 ('+(r&&r.saved!=null?r.saved:names.length)+'명) ✓','ok');
+        box.remove();
+      }catch(e){
+        toast('저장 실패: '+e.message,'err');
+        saveBtn.disabled=false;saveBtn.textContent='저장';
+      }
+    });
+    try{
+      const res=await apiCall({action:'getEmailTargets'});
+      names=(res&&res.names)||[];
+    }catch(e){
+      toast('명단 불러오기 실패: '+e.message,'err');
+    }
+    draw();
+  });
+}
