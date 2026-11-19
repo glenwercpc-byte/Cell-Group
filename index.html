@@ -30,6 +30,8 @@ input{font-family:var(--sans);outline:none}
   letter-spacing:.03em;white-space:nowrap}
 .tb-title-fix{font-size:.82rem;color:var(--navy);font-weight:600;white-space:nowrap}
 .tb-stat{flex:1;text-align:center;font-size:.74rem;color:var(--ink2);font-weight:600;white-space:nowrap}
+.tb-statrow{flex:1;display:flex;align-items:center;justify-content:center;gap:10px}
+.tb-statrow .tb-stat{flex:0 0 auto}
 .tb-btns{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
 
 /* ── 연도 버튼 ── */
@@ -149,7 +151,8 @@ table{width:100%;border-collapse:collapse}
 }
 @media(max-width:700px){
   .toolbar{flex-wrap:wrap;gap:8px}
-  .tb-stat{margin-left:0;width:100%;text-align:right}
+  .tb-statrow{width:100%;justify-content:space-between}
+  .tb-stat{margin-left:0;text-align:left}
   .main{padding:10px 8px 40px}
 }
 </style>
@@ -193,10 +196,12 @@ table{width:100%;border-collapse:collapse}
       <span class="tb-title-fix">샘터 조직표</span>
     </div>
 
-    <div class="tb-stat" id="stat"></div>
+    <div class="tb-statrow">
+      <div class="tb-stat" id="stat"></div>
+      <button id="btn-email" class="btn-dist" onclick="openEmailTargets()">✉ 이메일 발송</button>
+    </div>
 
     <div class="tb-btns">
-      <button id="btn-email" class="btn-dist" onclick="openEmailTargets()">✉ 이메일 발송</button>
       <button id="btn-add-dist" class="btn-dist" onclick="addDistrict()">＋ 지구 추가</button>
       <div class="dp-wrap" id="dpw">
         <button id="btn-add-samt" class="btn-samt" onclick="toggleDp()">＋ 샘터 추가</button>
